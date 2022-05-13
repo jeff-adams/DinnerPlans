@@ -6,30 +6,39 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using System.Text.Json;
+using DinnerPlansCommon;
+using Azure.Data.Tables;
+using Azure;
 
 namespace DinnerPlansAPI
 {
     public static class DinnerPlans
     {
-        [FunctionName("DinnerPlans")]
-        public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+        private const string mealTableName = "meals";
+        private const string mealPartitionKey = "meal";
+        private const string menuTableName = "menu";
+        private const string menuPartionKey = "menu";
+
+        [FunctionName("GetMealById")]
+        public static async Task<IActionResult> GetMealById(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meal/{id}")] HttpRequest req,
+            [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
+            ILogger log,
+            string id)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            log.LogInformation($"Meal | GET | {id}");
+            MealEntity meal = null;
+            try
+            {
+                meal = await mealTable.GetEntityAsync<MealEntity>(mealPartitionKey, id);
+            }
+            catch (RequestFailedException)
+            {
+                return new BadRequestObjectResult($"There was no meal found with ID: {id}");
+            }
 
-            string name = req.Query["name"];
-
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
-
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
+            return new OkObjectResult(meal);
         }
     }
 }
