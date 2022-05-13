@@ -63,3 +63,5 @@
 > POST api/menu/{DateTime}
 #### Delete Menu
 > DELETE api/menu/{DateTime}
+
+[TableClient examples](https://medium.com/geekculture/using-the-new-c-azure-data-tables-sdk-with-azure-cosmos-db-786085ac8190)
