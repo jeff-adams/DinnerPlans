@@ -2,8 +2,8 @@
 
 public record Meal(string Id,
                    string Name,
-                   string Catagories,
-                   string Seasons,
+                   string[] Catagories,
+                   string[] Seasons,
                    string Recipe,
                    int Rating,
                    int Priority);
