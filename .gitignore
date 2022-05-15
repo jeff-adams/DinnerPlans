@@ -456,3 +456,7 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Azurite Local Blob Storage
+__blobstorage__/
+__azurite*
