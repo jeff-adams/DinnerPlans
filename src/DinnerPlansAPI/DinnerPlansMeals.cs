@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
@@ -9,18 +10,17 @@ using Microsoft.Extensions.Logging;
 using Azure;
 using Azure.Data.Tables;
 using DinnerPlansCommon;
-using System.Text.Json;
-using System.IO;
-using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace DinnerPlansAPI
 {
-    public static class DinnerPlans
+    public static class DinnerPlansMeals
     {
         private const string mealTableName = "meals";
         private const string mealPartitionKey = "meal";
         private const string menuTableName = "menu";
         private const string menuPartionKey = "menu";
+        private const string catagoriesTableName = "catagories";
+        private const string catagoriesPartionKey = "catagory";
 
         [FunctionName("GetMealById")]
         public static async Task<IActionResult> GetMealById(
@@ -29,7 +29,7 @@ namespace DinnerPlansAPI
             ILogger log,
             string id)
         {
-            log.LogInformation($"Meal | GET | {id}");
+            log.LogInformation($"Meal | GET | Meal - {id}");
             MealEntity mealEntity = null;
             try
             {
@@ -49,7 +49,7 @@ namespace DinnerPlansAPI
             [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
             ILogger log)
         {
-            log.LogInformation($"Meal | GET | meals");
+            log.LogInformation($"Meal | GET | All Meals");
             AsyncPageable<MealEntity> mealsResults;
             try
             {
@@ -70,9 +70,10 @@ namespace DinnerPlansAPI
         public static async Task<IActionResult> CreateMeal(
             [HttpTrigger(AuthorizationLevel.Function, "put", Route = "meal")] HttpRequest req,
             [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
+            [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
             ILogger log)
         {
-            log.LogInformation($"Meal | PUT | meal");
+            log.LogInformation($"Meal | PUT | Create New Meal");
 
             string reqBody = await req.ReadAsStringAsync();
             Meal meal = JsonSerializer.Deserialize<Meal>(reqBody);
@@ -85,25 +86,20 @@ namespace DinnerPlansAPI
             {
                 return new BadRequestObjectResult(ex);
             }
-            
-            var result = new OkObjectResult(mealEntity.Id);
 
-            var collection = new MediaTypeCollection();
-            collection.Add("text/plain");
-
-            result.ContentTypes = collection;
-            result.StatusCode = StatusCodes.Status201Created;
-
-            return result;
+            await UpdateOrAddCatagories(catagoryTable, meal.Catagories);
+        
+            return new OkObjectResult(mealEntity.Id).DefineResultAsPlainTextContent();
         }
         
         [FunctionName("UpdateMeal")]
         public static async Task<IActionResult> UpdateMeal(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "meal")] HttpRequest req,
             [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
+            [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
             ILogger log)
         {
-            log.LogInformation($"Meal | POST | meal");
+            log.LogInformation($"Meal | POST | Update a Meal");
 
             string reqBody = await req.ReadAsStringAsync();
             Meal meal = JsonSerializer.Deserialize<Meal>(reqBody);
@@ -116,6 +112,9 @@ namespace DinnerPlansAPI
             {
                 return new BadRequestObjectResult(ex);
             }
+
+            await UpdateOrAddCatagories(catagoryTable, meal.Catagories);
+
             return new OkResult();
         }
 
@@ -126,7 +125,7 @@ namespace DinnerPlansAPI
             ILogger log,
             string id)
         {
-            log.LogInformation($"Meal | DELETE | {id}");
+            log.LogInformation($"Meal | DELETE | Meal - {id}");
             try
             {
                 Response response = await mealTable.DeleteEntityAsync(mealPartitionKey, id);
@@ -136,6 +135,14 @@ namespace DinnerPlansAPI
                 return new BadRequestObjectResult(ex);
             }
             return new OkResult();
+        }
+
+        private static async Task UpdateOrAddCatagories(TableClient catagoryTable, string[] catagories)
+        {
+            foreach (string catagory in catagories)
+            {
+                await catagoryTable.UpsertEntityAsync<TableEntity>(new TableEntity(catagoriesPartionKey, catagory));
+            }
         }
     }
 }
