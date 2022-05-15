@@ -1,6 +1,9 @@
 using System;
 using System.Linq;
 using DinnerPlansCommon;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace DinnerPlansAPI;
 
@@ -28,4 +31,14 @@ public static class DinnerPlanAPIExtensions
             mealEntity.Recipe, 
             mealEntity.Rating, 
             mealEntity.Priority);
+
+    public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result)
+    {
+        var collection = new MediaTypeCollection();
+        collection.Add("text/plain");
+
+        result.ContentTypes = collection;
+        result.StatusCode = StatusCodes.Status201Created;
+        return result;
+    }
 }
