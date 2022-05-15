@@ -9,8 +9,7 @@ public record Meal(string Id,
                    int Priority);
 
 public record Menu(DateTime Date,
-                   string MealId,
-                   string RemovedMealId);
+                   Meal Meal,
+                   Meal RemovedMeal);
 
-public record Option(string Seasons,
-                     string Catagories);
+public record MenuRange(List<Menu> Menus);
