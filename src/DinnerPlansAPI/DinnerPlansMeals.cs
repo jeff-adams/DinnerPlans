@@ -17,8 +17,6 @@ namespace DinnerPlansAPI
     {
         private const string mealTableName = "meals";
         private const string mealPartitionKey = "meal";
-        private const string menuTableName = "menu";
-        private const string menuPartionKey = "menu";
         private const string catagoriesTableName = "catagories";
         private const string catagoriesPartionKey = "catagory";
 
@@ -99,10 +97,11 @@ namespace DinnerPlansAPI
             [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
             ILogger log)
         {
-            log.LogInformation($"Meal | POST | Update a Meal");
-
             string reqBody = await req.ReadAsStringAsync();
             Meal meal = JsonSerializer.Deserialize<Meal>(reqBody);
+            
+            log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
+            
             MealEntity mealEntity = meal.ConvertToMealEntity(mealPartitionKey);
             try
             {

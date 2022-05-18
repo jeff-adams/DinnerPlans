@@ -32,6 +32,15 @@ public static class DinnerPlanAPIExtensions
             mealEntity.Rating, 
             mealEntity.Priority);
 
+    public static MenuEntity ConvertToMenuEntity(this Menu menu, string partionKey) =>
+        new MenuEntity()
+        {
+            PartitionKey = partionKey,
+            Date = menu.Date,
+            MealId = menu.Meal.Id,
+            RemovedMealId = menu.RemovedMeal.Id
+        };
+
     public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result)
     {
         var collection = new MediaTypeCollection();
