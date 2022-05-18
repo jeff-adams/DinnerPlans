@@ -20,8 +20,6 @@ namespace DinnerPlansAPI
         private const string mealPartitionKey = "meal";
         private const string menuTableName = "menu";
         private const string menuPartitionKey = "menu";
-        private const string catagoriesTableName = "catagories";
-        private const string catagoriesPartionKey = "catagory";
 
         [FunctionName("GetMenuByDates")]
         public static async Task<IActionResult> GetMenuByDates(
@@ -130,6 +128,43 @@ namespace DinnerPlansAPI
             }
 
             return new OkResult();
+        }
+
+        [FunctionName("GetTodaysMenu")]
+        public static async Task<IActionResult> GetTodaysMenu(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req,
+            [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
+            [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
+            ILogger log)
+        {
+            string today = DateTime.Now.ToString("yyyy.MM.dd");
+
+            log.LogInformation($"Menu | GET | Menu from today - {today}");
+            
+            MenuEntity menuEntity = null;
+            try
+            {
+                menuEntity = await menuTable.GetEntityAsync<MenuEntity>(menuPartitionKey, today);
+            }
+            catch (RequestFailedException)
+            {
+                return new OkObjectResult("There's nothing on the menu for today :(").DefineResultAsPlainTextContent(StatusCodes.Status204NoContent);
+            }
+
+            MealEntity mealEntity = null;
+            try
+            {
+                if (!string.IsNullOrEmpty(menuEntity.MealId))
+                {
+                    mealEntity = await mealTable.GetEntityAsync<MealEntity>(mealPartitionKey, menuEntity.MealId);
+                }
+            }
+            catch (RequestFailedException ex)
+            {
+                log.LogWarning(ex.Message);
+            }
+            
+            return new OkObjectResult(mealEntity.Name).DefineResultAsPlainTextContent(StatusCodes.Status200OK);
         }
     }
 }

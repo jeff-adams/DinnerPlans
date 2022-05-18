@@ -41,13 +41,13 @@ public static class DinnerPlanAPIExtensions
             RemovedMealId = menu.RemovedMeal.Id
         };
 
-    public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result)
+    public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result, int statusCode)
     {
         var collection = new MediaTypeCollection();
         collection.Add("text/plain");
 
         result.ContentTypes = collection;
-        result.StatusCode = StatusCodes.Status201Created;
+        result.StatusCode = statusCode;
         return result;
     }
 }

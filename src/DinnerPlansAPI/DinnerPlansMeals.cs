@@ -87,7 +87,7 @@ namespace DinnerPlansAPI
 
             await UpdateOrAddCatagories(catagoryTable, meal.Catagories);
         
-            return new OkObjectResult(mealEntity.Id).DefineResultAsPlainTextContent();
+            return new OkObjectResult(mealEntity.Id).DefineResultAsPlainTextContent(StatusCodes.Status201Created);
         }
         
         [FunctionName("UpdateMeal")]
