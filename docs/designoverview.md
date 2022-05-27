@@ -23,7 +23,8 @@
 | Seasons | string[] |
 | Recipe | string |
 | Rating | int |
-| Priority | int |
+| LastOnMenu | DateTime |
+| NextOnMenu | DateTime |
 
 ### Menu Table
 | Key | Value Type |
@@ -39,10 +40,11 @@
 | Catagories | string[] |
 
 ---
+---
 
-## API Functions
+# API Functions
 
-### Meal
+## Meal
 #### Get Meal By ID
 > GET api/meal/{id}
 #### Get All Meals
@@ -54,14 +56,24 @@
 #### Delete Meal
 > DELETE api/meal/{id}
 
-### Menu
+## Menu
 #### Get Menu By Date Range
-> GET api/menu/begin={DateTime}&end={DateTime}
+> GET api/menu
+#### Get Today's Menu
+> GET api/menu/today
 #### Create Menu
 > PUT api/menu
 #### Update Menu
-> POST api/menu/{DateTime}
+> POST api/menu
 #### Delete Menu
-> DELETE api/menu/{DateTime}
+> DELETE api/menu
+
+---
 
 [TableClient examples](https://medium.com/geekculture/using-the-new-c-azure-data-tables-sdk-with-azure-cosmos-db-786085ac8190)
+
+HttpTrigger Function (Authentication) 
+-> SPA w/ JWT 
+-> some server w/ JWT 
+-> REST API w/ API Key 
+-> Azure Table Storage 
