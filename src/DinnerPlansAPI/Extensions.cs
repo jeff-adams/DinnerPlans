@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using DinnerPlansCommon;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 
@@ -19,7 +18,8 @@ public static class DinnerPlanAPIExtensions
             Seasons = meal.Seasons.Aggregate((accum, next) => $"{accum},{next}"),
             Recipe = meal.Recipe,
             Rating = meal.Rating,
-            Priority = meal.Priority
+            LastOnMenu = meal.LastOnMenu,
+            NextOnMenu = meal.NextOnMenu
         };
 
     public static Meal ConvertToMeal(this MealEntity mealEntity) =>
@@ -30,7 +30,8 @@ public static class DinnerPlanAPIExtensions
             mealEntity.Seasons.Split(','), 
             mealEntity.Recipe, 
             mealEntity.Rating, 
-            mealEntity.Priority);
+            mealEntity.LastOnMenu,
+            mealEntity.NextOnMenu);
 
     public static MenuEntity ConvertToMenuEntity(this Menu menu, string partionKey) =>
         new MenuEntity()
