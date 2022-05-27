@@ -148,7 +148,7 @@ public static class DinnerPlansMenu
         }
         catch (RequestFailedException)
         {
-            return new OkObjectResult("There's nothing on the menu for today :(").DefineResultAsPlainTextContent(StatusCodes.Status204NoContent);
+            return new OkObjectResult("There's nothing on the menu for today :(").DefineResultAsPlainTextContent(StatusCodes.Status200OK);
         }
 
         MealEntity mealEntity = null;
