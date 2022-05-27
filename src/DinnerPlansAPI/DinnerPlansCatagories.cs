@@ -1,5 +1,4 @@
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
@@ -9,34 +8,32 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Azure;
 using Azure.Data.Tables;
-using DinnerPlansCommon;
 
-namespace DinnerPlansAPI
+namespace DinnerPlansAPI;
+
+public static class DinnerPlansCatagories
 {
-    public static class DinnerPlansCatagories
+    private const string catagoriesTableName = "catagories";
+    private const string catagoriesPartionKey = "catagory";
+
+    [FunctionName("GetCatagories")]
+    public static async Task<IActionResult> GetCatagories(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "catagories")] HttpRequest req,
+        [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
+        ILogger log)
     {
-        private const string catagoriesTableName = "catagories";
-        private const string catagoriesPartionKey = "catagory";
-
-        [FunctionName("GetCatagories")]
-        public static async Task<IActionResult> GetCatagories(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "catagories")] HttpRequest req,
-            [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
-            ILogger log)
+        log.LogInformation($"Catagory | GET | All Catagories");
+        AsyncPageable<TableEntity> catagoryResults;
+        try
         {
-            log.LogInformation($"Catagory | GET | All Catagories");
-            AsyncPageable<TableEntity> catagoryResults;
-            try
-            {
-                catagoryResults = catagoryTable.QueryAsync<TableEntity>(catagory => catagory.PartitionKey  == catagoriesPartionKey);
-            }
-            catch (RequestFailedException)
-            {
-                return new OkObjectResult(new JsonResult(new EmptyResult()));
-            }
-
-            List<string> catagories = await catagoryResults.Select(row => row.RowKey).ToListAsync();
-            return new OkObjectResult(catagories);
+            catagoryResults = catagoryTable.QueryAsync<TableEntity>(catagory => catagory.PartitionKey  == catagoriesPartionKey);
         }
+        catch (RequestFailedException)
+        {
+            return new OkObjectResult(new JsonResult(new EmptyResult()));
+        }
+
+        List<string> catagories = await catagoryResults.Select(row => row.RowKey).ToListAsync();
+        return new OkObjectResult(catagories);
     }
 }
