@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Azure;
 using Azure.Data.Tables;
 using DinnerPlansCommon;
+using System.Text.Json.Serialization;
 
 namespace DinnerPlansAPI;
 
@@ -19,6 +20,8 @@ public static class DinnerPlansMeals
     private const string mealPartitionKey = "meal";
     private const string catagoriesTableName = "catagories";
     private const string catagoriesPartionKey = "catagory";
+
+    private static JsonSerializerOptions jsonOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     [FunctionName("GetMealById")]
     public static async Task<IActionResult> GetMealById(
@@ -74,7 +77,7 @@ public static class DinnerPlansMeals
         log.LogInformation($"Meal | PUT | Create New Meal");
 
         string reqBody = await req.ReadAsStringAsync();
-        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody);
+        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, jsonOptions);
         MealEntity mealEntity = meal.ConvertToMealEntity(mealPartitionKey);
         try
         {
@@ -98,7 +101,7 @@ public static class DinnerPlansMeals
         ILogger log)
     {
         string reqBody = await req.ReadAsStringAsync();
-        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody);
+        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, jsonOptions);
         
         log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
         
