@@ -21,7 +21,11 @@ public static class DinnerPlansMeals
     private const string catagoriesTableName = "catagories";
     private const string catagoriesPartionKey = "catagory";
 
-    private static JsonSerializerOptions jsonOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+    private static JsonSerializerOptions jsonOptions = new JsonSerializerOptions() 
+    { 
+        PropertyNameCaseInsensitive = true, 
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
+    };
 
     [FunctionName("GetMealById")]
     public static async Task<IActionResult> GetMealById(

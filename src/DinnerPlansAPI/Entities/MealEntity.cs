@@ -16,6 +16,6 @@ public class MealEntity : ITableEntity
     public string Seasons { get; set; }
     public string Recipe { get; set; }
     public int Rating { get; set; }
-    public DateTime LastOnMenu { get; set; }
-    public DateTime NextOnMenu { get; set; }
+    public DateTime? LastOnMenu { get; set; }
+    public DateTime? NextOnMenu { get; set; }
 }

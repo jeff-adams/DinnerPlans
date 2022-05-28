@@ -18,8 +18,8 @@ public static class DinnerPlanAPIExtensions
             Seasons = meal.Seasons.Aggregate((accum, next) => $"{accum},{next}"),
             Recipe = meal.Recipe,
             Rating = meal.Rating,
-            LastOnMenu = DateTime.SpecifyKind(meal.LastOnMenu, DateTimeKind.Utc),
-            NextOnMenu = DateTime.SpecifyKind(meal.NextOnMenu, DateTimeKind.Utc)
+            LastOnMenu = meal.LastOnMenu,
+            NextOnMenu = meal.NextOnMenu
         };
 
     public static Meal ConvertToMeal(this MealEntity mealEntity) =>

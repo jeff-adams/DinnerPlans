@@ -6,8 +6,8 @@ public record Meal(string Id,
                    string[] Seasons,
                    string Recipe,
                    int Rating,
-                   DateTime LastOnMenu,
-                   DateTime NextOnMenu);
+                   DateTime? LastOnMenu,
+                   DateTime? NextOnMenu);
 
 public record Menu(DateTime Date,
                    Meal Meal,
