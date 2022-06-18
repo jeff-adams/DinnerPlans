@@ -112,7 +112,7 @@ public static class DinnerPlansMeals
         MealEntity mealEntity = meal.ConvertToMealEntity(mealPartitionKey);
         try
         {
-            Response response = await mealTable.UpdateEntityAsync<MealEntity>(mealEntity, Azure.ETag.All);
+            Response response = await mealTable.UpdateEntityAsync<MealEntity>(mealEntity, Azure.ETag.All, TableUpdateMode.Replace);
         }
         catch (RequestFailedException ex)
         {
