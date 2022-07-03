@@ -57,25 +57,26 @@ public static class DinnerPlansMenuBot
 
         // randomly choose weighted meal
         int randomIndex = new Random().Next(totalWeight) + 1;
-        Meal selectedMeal = null;
+        log.LogInformation($"Number of meals: {weights.Length} | Total weight: {totalWeight} | Randomly selected index: {randomIndex}");
+        string selectedMealId = string.Empty;
         for (int i = 0; i < weights.Length; i++)
         {
-            int weight = weights[i];
-            randomIndex -= weight;
+            randomIndex -= weights[i];
             if (randomIndex <= 0)
             {
-                selectedMeal = filteredMeals[i];
+                selectedMealId = filteredMeals[i].Id;
+                break;
             }
         }
 
-        return new OkObjectResult(selectedMeal.Id);
+        return new OkObjectResult(selectedMealId);
     }
 
     private static async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync(TableClient mealTable, ILogger log)
     {
         log.LogInformation("Querying for all meals not currently on the menu");
-        AsyncPageable<MealEntity> mealResults = mealTable.QueryAsync<MealEntity>(meal => meal.NextOnMenu == null);
-        List<MealEntity> mealEntities = await mealResults.ToListAsync();
+        AsyncPageable<MealEntity> mealResults = mealTable.QueryAsync<MealEntity>(meal => meal.PartitionKey == mealPartitionKey);
+        List<MealEntity> mealEntities = await mealResults.Where(meal => meal.NextOnMenu == null).ToListAsync();
         return mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
     }
 
@@ -83,10 +84,10 @@ public static class DinnerPlansMenuBot
     {
         log.LogInformation("Querying for the rule's definition of seasons");
         RuleEntity[] seasonRules = await rulesTable.QueryAsync<RuleEntity>(x => x.PartitionKey == "seasons").ToArrayAsync();
-        log.LogInformation($"Filter meals by the season of {dateResult.ToString("yyyyMMdd")}");
         string season = seasonRules.Where(rule => dateResult >= DateTime.Parse(rule.Start) && dateResult <= DateTime.Parse(rule.End))
                                    .Select(rule => rule.RowKey)
                                    .First();
+        log.LogInformation($"Filter meals by the season: {season}");
         return meals.Where(meal => meal.Seasons.Contains(season));
     }
 
@@ -94,7 +95,8 @@ public static class DinnerPlansMenuBot
     {
         string day = dateResult.DayOfWeek.ToString();
         log.LogInformation($"Querying for rules associated with the day of the week: {day}");
-        var ruleResponse = await rulesTable.GetEntityAsync<RuleEntity>("days", day);
+        Response<RuleEntity> ruleResponse = await rulesTable.GetEntityAsync<RuleEntity>("days", day);
+        log.LogInformation($"Filtering on meals from these catagories: {ruleResponse.Value.Catagories}");
         string[] catagories = ruleResponse.Value.Catagories.Split(',');
         return meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
     }
@@ -120,7 +122,7 @@ public static class DinnerPlansMenuBot
     {
         int weight = 0;
         
-        DateTime start = meal.LastOnMenu ?? DateTime.Now;
+        DateTime start = meal.LastOnMenu ?? DateTime.Now.AddDays(-1);
         int dateWeight = (DateTime.Now - start).Days;
 
         weight += meal.Rating * dateWeight;
