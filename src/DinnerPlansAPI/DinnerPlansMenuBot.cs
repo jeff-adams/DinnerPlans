@@ -10,8 +10,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using DinnerPlansCommon;
-using System.IO;
-using System.Threading;
 
 namespace DinnerPlansAPI;
 
@@ -33,9 +31,7 @@ public class DinnerPlansMenuBot
     )
     {
         // Runs every 5 minutes???
-        var menu = new DinnerPlansMenu();
         //Check menu for meals in the next 30 days
-        var response = await menu.GetMenuByDates(null, menuTable, mealTable, log);
         //For each day that does not have a meal    
             //Choose meal
             //Update the menu with the selected meal
