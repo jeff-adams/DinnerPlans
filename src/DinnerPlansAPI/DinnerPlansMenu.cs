@@ -14,7 +14,7 @@ using DinnerPlansCommon;
 
 namespace DinnerPlansAPI;
 
-public static class DinnerPlansMenu
+public class DinnerPlansMenu
 {
     private const string mealTableName = "meals";
     private const string mealPartitionKey = "meal";
@@ -22,7 +22,7 @@ public static class DinnerPlansMenu
     private const string menuPartitionKey = "menu";
 
     [FunctionName("GetMenuByDates")]
-    public static async Task<IActionResult> GetMenuByDates(
+    public async Task<IActionResult> GetMenuByDates(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "menu")] HttpRequest req,
         [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
@@ -81,7 +81,7 @@ public static class DinnerPlansMenu
     }
 
     [FunctionName("CreateMenu")]
-    public static async Task<IActionResult> CreateMenu(
+    public async Task<IActionResult> CreateMenu(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "menu")] HttpRequest req,
         [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
         ILogger log)
@@ -131,7 +131,7 @@ public static class DinnerPlansMenu
     }
 
     [FunctionName("GetTodaysMenu")]
-    public static async Task<IActionResult> GetTodaysMenu(
+    public async Task<IActionResult> GetTodaysMenu(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req,
         [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,

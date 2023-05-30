@@ -1,19 +1,21 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Azure.Data.Tables;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using DinnerPlansCommon;
-using Azure;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
+using System.Threading;
 
 namespace DinnerPlansAPI;
 
-public static class DinnerPlansMenuBot
+public class DinnerPlansMenuBot
 {
     private const string mealTableName = "meals";
     private const string mealPartitionKey = "meal";
@@ -21,8 +23,26 @@ public static class DinnerPlansMenuBot
     private const string specialDatesPartitionKey = "specialDates";
     private const string rulesTableName = "rules";
 
+    [FunctionName("TimedMenuUpdater")]
+    public async Task MenuUpdaterBot(
+        [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
+        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
+        [Table(specialDatesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient specialDatesTable,
+        [Table(rulesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient rulesTable,
+        ILogger log
+    )
+    {
+        // Runs every 5 minutes???
+        var menu = new DinnerPlansMenu();
+        //Check menu for meals in the next 30 days
+        var response = await menu.GetMenuByDates(null, menuTable, mealTable, log);
+        //For each day that does not have a meal    
+            //Choose meal
+            //Update the menu with the selected meal
+    }
+
     [FunctionName("MealChooser")]
-    public static async Task<IActionResult> ChooseMeal(
+    public async Task<IActionResult> ChooseMeal(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "choose_meal")] HttpRequest req,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         [Table(specialDatesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient specialDatesTable,
@@ -40,20 +60,40 @@ public static class DinnerPlansMenuBot
         string date = dateResult.ToString("yyyy.MM.dd");
         log.LogInformation($"MealChooser | GET | Choose random meal for {date}");
 
-        string mealId = await QueryForSpecialMealIdAsync(dateResult.ToString("MMdd"), specialDatesTable, log);
+       string selectedMealId = await RandomMealByDateAsync(dateResult, mealTable, specialDatesTable, rulesTable, log);
+
+       return new OkObjectResult(selectedMealId);
+    }
+
+    private async Task<string> RandomMealByDateAsync(
+        DateTime date,
+        TableClient mealTable,
+        TableClient specialDatesTable,
+        TableClient rulesTable,
+        ILogger log
+    )
+    {
+         string mealId = await QueryForSpecialMealIdAsync(date.ToString("MMdd"), specialDatesTable, log);
         if (!string.IsNullOrEmpty(mealId))
         {
-            return new OkObjectResult(mealId);
+            return mealId;
         }
 
         IEnumerable<Meal> meals = await GetAllMealsNotOnMenuAsync(mealTable, log);
-        meals = await FilterMealsOnDayOfWeekAsync(rulesTable, dateResult, meals, log);
-        meals = await FilterMealsOnSeasonAsync(rulesTable, dateResult, meals, log);
+        meals = await FilterMealsOnDayOfWeekAsync(rulesTable, date, meals, log);
+        meals = await FilterMealsOnSeasonAsync(rulesTable, date, meals, log);
         Meal[] filteredMeals = meals.ToArray();
 
         // create weights
         int totalWeight = 0;
-        int[] weights = filteredMeals.Select(meal => { int mealWeight = CalculateMealWeight(meal); totalWeight += mealWeight; return mealWeight;}).ToArray();
+        int[] weights = filteredMeals
+            .Select(meal => 
+                { 
+                    int mealWeight = CalculateMealWeight(meal); 
+                    totalWeight += mealWeight; 
+                    return mealWeight;
+                })
+            .ToArray();
 
         // randomly choose weighted meal
         int randomIndex = new Random().Next(totalWeight) + 1;
@@ -69,10 +109,10 @@ public static class DinnerPlansMenuBot
             }
         }
 
-        return new OkObjectResult(selectedMealId);
+        return selectedMealId;
     }
 
-    private static async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync(TableClient mealTable, ILogger log)
+    private async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync(TableClient mealTable, ILogger log)
     {
         log.LogInformation("Querying for all meals not currently on the menu");
         AsyncPageable<MealEntity> mealResults = mealTable.QueryAsync<MealEntity>(meal => meal.PartitionKey == mealPartitionKey);
@@ -80,7 +120,7 @@ public static class DinnerPlansMenuBot
         return mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
     }
 
-    private static async Task<IEnumerable<Meal>> FilterMealsOnSeasonAsync(TableClient rulesTable, DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
+    private async Task<IEnumerable<Meal>> FilterMealsOnSeasonAsync(TableClient rulesTable, DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
     {
         log.LogInformation("Querying for the rule's definition of seasons");
         RuleEntity[] seasonRules = await rulesTable.QueryAsync<RuleEntity>(x => x.PartitionKey == "seasons").ToArrayAsync();
@@ -91,7 +131,7 @@ public static class DinnerPlansMenuBot
         return meals.Where(meal => meal.Seasons.Contains(season));
     }
 
-    private static async Task<IEnumerable<Meal>> FilterMealsOnDayOfWeekAsync(TableClient rulesTable, DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
+    private async Task<IEnumerable<Meal>> FilterMealsOnDayOfWeekAsync(TableClient rulesTable, DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
     {
         string day = dateResult.DayOfWeek.ToString();
         log.LogInformation($"Querying for rules associated with the day of the week: {day}");
@@ -101,7 +141,7 @@ public static class DinnerPlansMenuBot
         return meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
     }
 
-    private static async Task<string> QueryForSpecialMealIdAsync(string date, TableClient specialDateTable, ILogger log)
+    private async Task<string> QueryForSpecialMealIdAsync(string date, TableClient specialDateTable, ILogger log)
     {
         string mealId = string.Empty;
 
@@ -118,7 +158,7 @@ public static class DinnerPlansMenuBot
         return mealId;
     }
 
-    private static int CalculateMealWeight(Meal meal)
+    private int CalculateMealWeight(Meal meal)
     {
         int weight = 0;
         

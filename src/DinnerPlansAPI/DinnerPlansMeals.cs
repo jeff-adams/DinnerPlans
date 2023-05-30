@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -10,25 +11,24 @@ using Microsoft.Extensions.Logging;
 using Azure;
 using Azure.Data.Tables;
 using DinnerPlansCommon;
-using System.Text.Json.Serialization;
 
 namespace DinnerPlansAPI;
 
-public static class DinnerPlansMeals
+public class DinnerPlansMeals
 {
     private const string mealTableName = "meals";
     private const string mealPartitionKey = "meal";
     private const string catagoriesTableName = "catagories";
     private const string catagoriesPartionKey = "catagory";
 
-    private static JsonSerializerOptions jsonOptions = new JsonSerializerOptions() 
+    private JsonSerializerOptions jsonOptions = new JsonSerializerOptions() 
     { 
         PropertyNameCaseInsensitive = true, 
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
     };
 
     [FunctionName("GetMealById")]
-    public static async Task<IActionResult> GetMealById(
+    public async Task<IActionResult> GetMealById(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meal/{id}")] HttpRequest req,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log,
@@ -49,7 +49,7 @@ public static class DinnerPlansMeals
     }
 
     [FunctionName("GetMeals")]
-    public static async Task<IActionResult> GetMeals(
+    public async Task<IActionResult> GetMeals(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meals")] HttpRequest req,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log)
@@ -72,7 +72,7 @@ public static class DinnerPlansMeals
     }
 
     [FunctionName("CreateMeal")]
-    public static async Task<IActionResult> CreateMeal(
+    public async Task<IActionResult> CreateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "meal")] HttpRequest req,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
@@ -98,7 +98,7 @@ public static class DinnerPlansMeals
     }
     
     [FunctionName("UpdateMeal")]
-    public static async Task<IActionResult> UpdateMeal(
+    public async Task<IActionResult> UpdateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "meal")] HttpRequest req,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
@@ -125,7 +125,7 @@ public static class DinnerPlansMeals
     }
 
     [FunctionName("DeleteMeal")]
-    public static async Task<IActionResult> DeleteMeal(
+    public async Task<IActionResult> DeleteMeal(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "meal/{id}")] HttpRequest req,
         [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log,
@@ -143,7 +143,7 @@ public static class DinnerPlansMeals
         return new OkResult();
     }
 
-    private static async Task UpdateOrAddCatagories(TableClient catagoryTable, string[] catagories)
+    private async Task UpdateOrAddCatagories(TableClient catagoryTable, string[] catagories)
     {
         foreach (string catagory in catagories)
         {
