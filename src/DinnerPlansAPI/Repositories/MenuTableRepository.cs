@@ -24,17 +24,14 @@ public class MenuTableRepository : IMenuRepository
 
     public async Task<MenuEntity> GetMenuEntityAsync(string menuKey)
     {
-        MenuEntity menuEntity;
         try
         {
-            menuEntity = await client.GetEntityAsync<MenuEntity>(menuPartitionKey, menuKey);
+            return await client.GetEntityAsync<MenuEntity>(menuPartitionKey, menuKey);
         }
         catch (RequestFailedException ex)
         {
-            throw new MenuRepositoryException($"Unable to get the menu for {menuKey}", ex);
+            throw new DinnerPlansRepositoryException($"Unable to get the menu for {menuKey}", ex);
         }
-
-        return menuEntity;
     }
 
     public async Task AddMenuEntityAsync(MenuEntity menu)
@@ -45,7 +42,7 @@ public class MenuTableRepository : IMenuRepository
         }
         catch (RequestFailedException ex)
         {
-            throw new MenuRepositoryException($"Unable to create the menu for {menu.RowKey}", ex);
+            throw new DinnerPlansRepositoryException($"Unable to create the menu for {menu.RowKey}", ex);
         }
     }
 
@@ -57,22 +54,19 @@ public class MenuTableRepository : IMenuRepository
         }
         catch (RequestFailedException ex)
         {
-            throw new MenuRepositoryException("Unable to update the menu", ex);
+            throw new DinnerPlansRepositoryException("Unable to update the menu", ex);
         }
     }
 
     public async Task<IReadOnlyCollection<MenuEntity>> QueryMenuEntityAsync(Expression<Func<MenuEntity, bool>> filter)
     {
-        AsyncPageable<MenuEntity> results;
         try
         {
-            results = client.QueryAsync<MenuEntity>(filter);
+            return await client.QueryAsync<MenuEntity>(filter).ToListAsync();
         }
         catch (RequestFailedException)
         {
             return Enumerable.Empty<MenuEntity>() as IReadOnlyCollection<MenuEntity>;
         }
-
-        return await results.ToListAsync();
     }
 }

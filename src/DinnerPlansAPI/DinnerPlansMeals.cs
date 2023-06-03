@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Azure;
 using Azure.Data.Tables;
 using DinnerPlansCommon;
+using DinnerPlansAPI.Repositories;
 
 namespace DinnerPlansAPI;
 
@@ -27,22 +28,30 @@ public class DinnerPlansMeals
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
     };
 
+    private readonly IMealRepository mealRepo;
+
+    public DinnerPlansMeals(
+        IMealRepository mealRespository
+    )
+    {
+        mealRepo = mealRespository;
+    }
+
     [FunctionName("GetMealById")]
     public async Task<IActionResult> GetMealById(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meal/{id}")] HttpRequest req,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log,
         string id)
     {
         log.LogInformation($"Meal | GET | Meal - {id}");
-        MealEntity mealEntity = null;
+        MealEntity mealEntity;
         try
         {
-            mealEntity = await mealTable.GetEntityAsync<MealEntity>(mealPartitionKey, id);
+            mealEntity = await mealRepo.GetMealEntityAsync(id);
         }
-        catch (RequestFailedException)
+        catch (MealRepositoryException ex)
         {
-            return new BadRequestObjectResult($"There was no meal found with ID: {id}");
+            return new BadRequestObjectResult(ex.Message);
         }
         
         return new OkObjectResult(mealEntity.ConvertToMeal());

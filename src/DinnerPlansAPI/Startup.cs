@@ -13,5 +13,7 @@ public class Startup : FunctionsStartup
     {
         builder.AddTokenCredentials();
         builder.Services.AddScoped<IMenuRepository, MenuTableRepository>();
+        builder.Services.AddScoped<IMealRepository, MealTableRepository>();
+        builder.Services.AddScoped<IDinnerPlanRepository<MenuEntity>, TableRepository<MenuEntity>>();
     }
 }

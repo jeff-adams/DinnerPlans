@@ -22,10 +22,10 @@ public class DinnerPlansMenu
     private const string menuTableName = "menu";
     private const string menuPartitionKey = "menu";
 
-    private readonly IMenuRepository menuRepo;
+    private readonly IDinnerPlanRepository<MenuEntity> menuRepo;
 
     public DinnerPlansMenu(
-        IMenuRepository menuRepository)
+        IDinnerPlanRepository<MenuEntity> menuRepository)
     {
         menuRepo = menuRepository;
     }
@@ -42,7 +42,7 @@ public class DinnerPlansMenu
 
         log.LogInformation($"Menu | GET | Menu from {startDate} to {endDate}");
         
-        IReadOnlyCollection<MenuEntity> menuEntities = await menuRepo.QueryMenuEntityAsync(menu => menu.PartitionKey == menuPartitionKey 
+        IReadOnlyCollection<MenuEntity> menuEntities = await menuRepo.QueryEntityAsync(menu => menu.PartitionKey == menuPartitionKey 
                                                                     && menu.Date >= dateRange.StartDate 
                                                                     && menu.Date <= dateRange.EndDate);
 
@@ -92,9 +92,9 @@ public class DinnerPlansMenu
 
         try
         {
-            await menuRepo.AddMenuEntityAsync(menuEntity);   
+            await menuRepo.AddEntityAsync(menuEntity);   
         }
-        catch (MenuRepositoryException ex)
+        catch (DinnerPlansRepositoryException ex)
         {
             return new BadRequestObjectResult(ex.Message);
         }
@@ -117,9 +117,9 @@ public class DinnerPlansMenu
         
         try
         {
-            await menuRepo.UpdateMenuEntityAsync(menuEntity);   
+            await menuRepo.UpdateEntityAsync(menuEntity);   
         }
-        catch (MenuRepositoryException ex)
+        catch (DinnerPlansRepositoryException ex)
         {
             return new BadRequestObjectResult(ex.Message);
         }
@@ -140,9 +140,9 @@ public class DinnerPlansMenu
         MenuEntity menuEntity = null;
         try
         {
-            menuEntity = await menuRepo.GetMenuEntityAsync(today);
+            menuEntity = await menuRepo.GetEntityAsync(today);
         }
-        catch (MenuRepositoryException)
+        catch (DinnerPlansRepositoryException)
         {
             return new OkObjectResult("There's nothing on the menu for today :(").DefineResultAsPlainTextContent(StatusCodes.Status200OK);
         }
