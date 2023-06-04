@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Azure;
-using Azure.Data.Tables;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
 
@@ -17,24 +16,22 @@ namespace DinnerPlansAPI;
 
 public class DinnerPlansMeals
 {
-    private const string mealTableName = "meals";
-    private const string mealPartitionKey = "meal";
-    private const string catagoriesTableName = "catagories";
-    private const string catagoriesPartionKey = "catagory";
-
     private JsonSerializerOptions jsonOptions = new JsonSerializerOptions() 
     { 
         PropertyNameCaseInsensitive = true, 
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
     };
 
-    private readonly IMealRepository mealRepo;
+    private readonly ITableRepository<MealEntity> mealRepo;
+    private readonly ITableRepository<CatagoryEntity> catagoryRepo;
 
     public DinnerPlansMeals(
-        IMealRepository mealRespository
+        ITableRepository<MealEntity> mealRespository,
+        ITableRepository<CatagoryEntity> catagoryRepository
     )
     {
         mealRepo = mealRespository;
+        catagoryRepo = catagoryRepository;
     }
 
     [FunctionName("GetMealById")]
@@ -47,9 +44,9 @@ public class DinnerPlansMeals
         MealEntity mealEntity;
         try
         {
-            mealEntity = await mealRepo.GetMealEntityAsync(id);
+            mealEntity = await mealRepo.GetEntityAsync(id);
         }
-        catch (MealRepositoryException ex)
+        catch (TableRepositoryException ex)
         {
             return new BadRequestObjectResult(ex.Message);
         }
@@ -60,21 +57,19 @@ public class DinnerPlansMeals
     [FunctionName("GetMeals")]
     public async Task<IActionResult> GetMeals(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meals")] HttpRequest req,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log)
     {
         log.LogInformation($"Meal | GET | All Meals");
-        AsyncPageable<MealEntity> mealsResults;
+        IReadOnlyCollection<MealEntity> mealEntities;
         try
         {
-            mealsResults = mealTable.QueryAsync<MealEntity>(meal => meal.PartitionKey  == mealPartitionKey);
+            mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey  == mealRepo.PartitionKey);
         }
-        catch (RequestFailedException)
+        catch (TableRepositoryException)
         {
             return new OkObjectResult(new JsonResult(new EmptyResult()));
         }
 
-        List<MealEntity> mealEntities = await mealsResults.ToListAsync();
         var meals = mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
 
         return new OkObjectResult(meals);
@@ -83,25 +78,23 @@ public class DinnerPlansMeals
     [FunctionName("CreateMeal")]
     public async Task<IActionResult> CreateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "meal")] HttpRequest req,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
-        [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
         ILogger log)
     {
         log.LogInformation($"Meal | PUT | Create New Meal");
 
         string reqBody = await req.ReadAsStringAsync();
         Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, jsonOptions);
-        MealEntity mealEntity = meal.ConvertToMealEntity(mealPartitionKey);
+        MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
         try
         {
-            Response response = await mealTable.AddEntityAsync<MealEntity>(mealEntity);
+            await mealRepo.AddEntityAsync(mealEntity);
         }
-        catch (RequestFailedException ex)
+        catch (TableRepositoryException ex)
         {
             return new BadRequestObjectResult(ex);
         }
 
-        await UpdateOrAddCatagories(catagoryTable, meal.Catagories);
+        await UpdateOrAddCatagories(meal.Catagories);
     
         return new OkObjectResult(mealEntity.Id).DefineResultAsPlainTextContent(StatusCodes.Status201Created);
     }
@@ -109,8 +102,6 @@ public class DinnerPlansMeals
     [FunctionName("UpdateMeal")]
     public async Task<IActionResult> UpdateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "meal")] HttpRequest req,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
-        [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
         ILogger log)
     {
         string reqBody = await req.ReadAsStringAsync();
@@ -118,17 +109,17 @@ public class DinnerPlansMeals
         
         log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
         
-        MealEntity mealEntity = meal.ConvertToMealEntity(mealPartitionKey);
+        MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
         try
         {
-            Response response = await mealTable.UpdateEntityAsync<MealEntity>(mealEntity, Azure.ETag.All, TableUpdateMode.Replace);
+            await mealRepo.UpdateEntityAsync(mealEntity);
         }
         catch (RequestFailedException ex)
         {
             return new BadRequestObjectResult(ex);
         }
 
-        await UpdateOrAddCatagories(catagoryTable, meal.Catagories);
+        await UpdateOrAddCatagories(meal.Catagories);
 
         return new OkResult();
     }
@@ -136,14 +127,13 @@ public class DinnerPlansMeals
     [FunctionName("DeleteMeal")]
     public async Task<IActionResult> DeleteMeal(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "meal/{id}")] HttpRequest req,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log,
         string id)
     {
         log.LogInformation($"Meal | DELETE | Meal - {id}");
         try
         {
-            Response response = await mealTable.DeleteEntityAsync(mealPartitionKey, id);
+            await mealRepo.DeleteEntityAsync(id);
         }
         catch (RequestFailedException ex)
         {
@@ -152,11 +142,15 @@ public class DinnerPlansMeals
         return new OkResult();
     }
 
-    private async Task UpdateOrAddCatagories(TableClient catagoryTable, string[] catagories)
+    private async Task UpdateOrAddCatagories(string[] catagories)
     {
         foreach (string catagory in catagories)
         {
-            await catagoryTable.UpsertEntityAsync<TableEntity>(new TableEntity(catagoriesPartionKey, catagory));
+            CatagoryEntity catagoryEntity = new ();
+            catagoryEntity.PartitionKey = catagoryRepo.PartitionKey;
+            catagoryEntity.RowKey = catagory;
+
+            await catagoryRepo.UpsertEntityAsync(catagoryEntity);
         }
     }
 }

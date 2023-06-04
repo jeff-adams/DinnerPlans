@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
@@ -6,34 +5,35 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Azure;
-using Azure.Data.Tables;
+using DinnerPlansAPI.Repositories;
 
 namespace DinnerPlansAPI;
 
-public static class DinnerPlansCatagories
+public class DinnerPlansCatagories
 {
-    private const string catagoriesTableName = "catagories";
-    private const string catagoriesPartionKey = "catagory";
+    private readonly ITableRepository<CatagoryEntity> catagoryRepo;
+
+    public DinnerPlansCatagories(ITableRepository<CatagoryEntity> catagoryRepository)
+    {
+        catagoryRepo = catagoryRepository;
+    }
 
     [FunctionName("GetCatagories")]
-    public static async Task<IActionResult> GetCatagories(
+    public async Task<IActionResult> GetCatagories(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "catagories")] HttpRequest req,
-        [Table(catagoriesTableName, Connection = "DinnerPlansTableConnectionString")] TableClient catagoryTable,
         ILogger log)
     {
         log.LogInformation($"Catagory | GET | All Catagories");
-        AsyncPageable<TableEntity> catagoryResults;
+        IReadOnlyCollection<CatagoryEntity> catagories;
         try
         {
-            catagoryResults = catagoryTable.QueryAsync<TableEntity>(catagory => catagory.PartitionKey  == catagoriesPartionKey);
+            catagories = await catagoryRepo.QueryEntityAsync(catagory => catagory.PartitionKey  == catagoryRepo.PartitionKey);
         }
-        catch (RequestFailedException)
+        catch (TableRepositoryException)
         {
             return new OkObjectResult(new JsonResult(new EmptyResult()));
         }
 
-        List<string> catagories = await catagoryResults.Select(row => row.RowKey).ToListAsync();
         return new OkObjectResult(catagories);
     }
 }

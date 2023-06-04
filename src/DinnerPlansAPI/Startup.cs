@@ -1,7 +1,4 @@
-using Azure.Core;
-using DinnerPlansAPI.Repositories;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
 
 [assembly: FunctionsStartup(typeof(DinnerPlansAPI.Startup))]
 
@@ -11,9 +8,12 @@ public class Startup : FunctionsStartup
 {
     public override void Configure(IFunctionsHostBuilder builder)
     {
-        builder.AddTokenCredentials();
-        builder.Services.AddScoped<IMenuRepository, MenuTableRepository>();
-        builder.Services.AddScoped<IMealRepository, MealTableRepository>();
-        builder.Services.AddScoped<IDinnerPlanRepository<MenuEntity>, TableRepository<MenuEntity>>();
+        builder
+            .AddTokenCredentials()
+            .AddTableRepository<MenuEntity>("menu", "menu")
+            .AddTableRepository<MealEntity>("meals", "meal")
+            .AddTableRepository<CatagoryEntity>("catagories", "catagories")
+            .AddTableRepository<SpecialDateEntity>("specialDates", "specialDates")
+            .AddTableRepository<RuleEntity>("rules", "day");
     }
 }

@@ -10,16 +10,17 @@ using Microsoft.Extensions.Configuration;
 
 namespace DinnerPlansAPI.Repositories;
 
-public class TableRepository<T> : IDinnerPlanRepository<T> where T : class, ITableEntity, new()
+public class TableRepository<T> : ITableRepository<T> where T : class, ITableEntity, new()
 {
+    public string PartitionKey { get; }
+
     private TableClient client;
-    private readonly string partitionKey = "menu";
     private readonly string entityTypeName;
 
-    public TableRepository(IConfiguration config, TokenCredential creds)
+    public TableRepository(IConfiguration config, TokenCredential creds, string tableName, string partitionKey)
     {
-        entityTypeName = nameof(T);
-        string tableName = config[entityTypeName];
+        PartitionKey = partitionKey;
+        entityTypeName = typeof(T).ToString().Split('.').Last();
         Uri tableEndpoint = new (config["TableEndpoint"]);
         client = new TableClient(tableEndpoint, tableName, creds);
     }
@@ -28,11 +29,11 @@ public class TableRepository<T> : IDinnerPlanRepository<T> where T : class, ITab
     {
         try
         {
-            return await client.GetEntityAsync<T>(partitionKey, key);
+            return await client.GetEntityAsync<T>(PartitionKey, key);
         }
         catch (RequestFailedException ex)
         {
-            throw new DinnerPlansRepositoryException($"Unable to get the {entityTypeName} for the key: {key}", ex);
+            throw new TableRepositoryException($"Unable to get the {entityTypeName} for the key: {key}", ex);
         }
     }
 
@@ -44,7 +45,7 @@ public class TableRepository<T> : IDinnerPlanRepository<T> where T : class, ITab
         }
         catch (RequestFailedException ex)
         {
-            throw new DinnerPlansRepositoryException($"Unable to create the {entityTypeName} for the key: {entity.RowKey}", ex);
+            throw new TableRepositoryException($"Unable to create the {entityTypeName} with key {entity.RowKey}", ex);
         }
     }
 
@@ -56,7 +57,31 @@ public class TableRepository<T> : IDinnerPlanRepository<T> where T : class, ITab
         }
         catch (RequestFailedException ex)
         {
-            throw new DinnerPlansRepositoryException($"Unable to update the {entityTypeName}", ex);
+            throw new TableRepositoryException($"Unable to update the {entityTypeName} with key {entity.RowKey}", ex);
+        }
+    }
+
+    public async Task UpsertEntityAsync(T entity)
+    {
+        try
+        {
+            Response response = await client.UpsertEntityAsync<T>(entity);
+        }
+        catch (RequestFailedException ex)
+        {
+            throw new TableRepositoryException($"Unable to upsert the {entityTypeName} with key {entity.RowKey}", ex);
+        }
+    }
+
+    public async Task DeleteEntityAsync(string key)
+    {
+        try
+        {
+            Response response = await client.DeleteEntityAsync(PartitionKey, key);
+        }
+        catch (RequestFailedException ex)
+        {
+            throw new TableRepositoryException($"Unable to delete the {entityTypeName} with key {key}", ex);
         }
     }
 
