@@ -36,11 +36,8 @@ public class DinnerPlansCatagories
             return new OkObjectResult(new JsonResult(new EmptyResult()));
         }
 
-        string catagoriesCsv = catagoryEntities
-            .Select(cat => cat.RowKey)
-            .Aggregate("", (next, accum) => $"{accum},{next}")
-            .Trim(',');
+        IEnumerable<string> catagories = catagoryEntities.Select(x => x.RowKey);
 
-        return new OkObjectResult(catagoriesCsv);
+        return new OkObjectResult(catagories);
     }
 }
