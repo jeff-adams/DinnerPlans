@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using DinnerPlansAPI.Repositories;
+using System.Linq;
 
 namespace DinnerPlansAPI;
 
@@ -24,16 +25,22 @@ public class DinnerPlansCatagories
         ILogger log)
     {
         log.LogInformation($"Catagory | GET | All Catagories");
-        IReadOnlyCollection<CatagoryEntity> catagories;
+        IReadOnlyCollection<CatagoryEntity> catagoryEntities;
         try
         {
-            catagories = await catagoryRepo.QueryEntityAsync(catagory => catagory.PartitionKey  == catagoryRepo.PartitionKey);
+            catagoryEntities = await catagoryRepo.QueryEntityAsync(catagory => catagory.PartitionKey  == catagoryRepo.PartitionKey);
+            log.LogInformation($"There are {catagoryEntities.Count} catagories");
         }
         catch (TableRepositoryException)
         {
             return new OkObjectResult(new JsonResult(new EmptyResult()));
         }
 
-        return new OkObjectResult(catagories);
+        string catagoriesCsv = catagoryEntities
+            .Select(cat => cat.RowKey)
+            .Aggregate("", (next, accum) => $"{accum},{next}")
+            .Trim(',');
+
+        return new OkObjectResult(catagoriesCsv);
     }
 }

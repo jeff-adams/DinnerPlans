@@ -12,7 +12,7 @@ public class Startup : FunctionsStartup
             .AddTokenCredentials()
             .AddTableRepository<MenuEntity>("menu", "menu")
             .AddTableRepository<MealEntity>("meals", "meal")
-            .AddTableRepository<CatagoryEntity>("catagories", "catagories")
+            .AddTableRepository<CatagoryEntity>("catagories", "catagory")
             .AddTableRepository<SpecialDateEntity>("specialDates", "specialDates")
             .AddTableRepository<RuleEntity>("rules", "day");
     }

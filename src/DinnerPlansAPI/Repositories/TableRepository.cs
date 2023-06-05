@@ -91,9 +91,9 @@ public class TableRepository<T> : ITableRepository<T> where T : class, ITableEnt
         {
             return await client.QueryAsync<T>(filter).ToListAsync();
         }
-        catch (RequestFailedException)
+        catch (RequestFailedException ex)
         {
-            return Enumerable.Empty<T>() as IReadOnlyCollection<T>;
+            throw new TableRepositoryException("The table query failed", ex);
         }
     }
 }
