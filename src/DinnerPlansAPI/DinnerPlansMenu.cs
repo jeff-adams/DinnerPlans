@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -9,23 +8,27 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Azure;
-using Azure.Data.Tables;
 using DinnerPlansCommon;
+using DinnerPlansAPI.Repositories;
 
 namespace DinnerPlansAPI;
 
 public class DinnerPlansMenu
 {
-    private const string mealTableName = "meals";
-    private const string mealPartitionKey = "meal";
-    private const string menuTableName = "menu";
-    private const string menuPartitionKey = "menu";
+    private readonly ITableRepository<MenuEntity> menuRepo;
+    private readonly ITableRepository<MealEntity> mealRepo;
+
+    public DinnerPlansMenu(
+        ITableRepository<MenuEntity> menuRepository,
+        ITableRepository<MealEntity> mealReposistory)
+    {
+        menuRepo = menuRepository;
+        mealRepo = mealReposistory;
+    }
 
     [FunctionName("GetMenuByDates")]
     public async Task<IActionResult> GetMenuByDates(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "menu")] HttpRequest req,
-        [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log)
     {
         DateRange dateRange = await JsonSerializer.DeserializeAsync<DateRange>(req.Body);
@@ -34,19 +37,9 @@ public class DinnerPlansMenu
 
         log.LogInformation($"Menu | GET | Menu from {startDate} to {endDate}");
         
-        AsyncPageable<MenuEntity> menuResults;
-        try
-        {
-            menuResults = menuTable.QueryAsync<MenuEntity>(menu => menu.PartitionKey == menuPartitionKey 
-                                                                && menu.Date >= dateRange.StartDate 
-                                                                && menu.Date <= dateRange.EndDate);
-        }
-        catch (RequestFailedException)
-        {
-            return new OkObjectResult(new JsonResult(new EmptyResult()));
-        }
-
-        List<MenuEntity> menuEntities = await menuResults.ToListAsync();
+        IReadOnlyCollection<MenuEntity> menuEntities = await menuRepo.QueryEntityAsync(menu => menu.PartitionKey == "menu" 
+                                                                    && menu.Date >= dateRange.StartDate 
+                                                                    && menu.Date <= dateRange.EndDate);
 
         var menuRange = new MenuRange(new List<Menu>());
         
@@ -58,14 +51,14 @@ public class DinnerPlansMenu
             {
                 if (!string.IsNullOrEmpty(menuEntity.MealId))
                 {
-                    mealEntity = await mealTable.GetEntityAsync<MealEntity>(mealPartitionKey, menuEntity.MealId);
+                    mealEntity = await mealRepo.GetEntityAsync(menuEntity.MealId);
                 }
                 if (!string.IsNullOrEmpty(menuEntity.RemovedMealId))
                 {
-                    removedMealEntity = await mealTable.GetEntityAsync<MealEntity>(mealPartitionKey, menuEntity.RemovedMealId);
+                    removedMealEntity = await mealRepo.GetEntityAsync(menuEntity.RemovedMealId);
                 }
             }
-            catch (RequestFailedException ex)
+            catch (TableRepositoryException ex)
             {
                 log.LogWarning(ex.Message);
             }
@@ -83,7 +76,6 @@ public class DinnerPlansMenu
     [FunctionName("CreateMenu")]
     public async Task<IActionResult> CreateMenu(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "menu")] HttpRequest req,
-        [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
         ILogger log)
     {
         string reqBody = await req.ReadAsStringAsync();
@@ -91,24 +83,23 @@ public class DinnerPlansMenu
 
         log.LogInformation($"Menu | PUT | Create new menu for {menu.Date.ToString("yyyy.MM.dd")}");
 
-        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuPartitionKey);
+        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.PartitionKey);
 
         try
         {
-            Response response = await menuTable.AddEntityAsync<MenuEntity>(menuEntity);   
+            await menuRepo.AddEntityAsync(menuEntity);   
         }
-        catch (RequestFailedException ex)
+        catch (TableRepositoryException ex)
         {
-            return new BadRequestObjectResult(ex);
+            return new BadRequestObjectResult(ex.Message);
         }
 
         return new OkResult();
     }
 
     [FunctionName("UpdateMenu")]
-    public static async Task<IActionResult> UpdateMenu(
+    public async Task<IActionResult> UpdateMenu(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "menu")] HttpRequest req,
-        [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
         ILogger log)
     {
         string reqBody = await req.ReadAsStringAsync();
@@ -116,15 +107,16 @@ public class DinnerPlansMenu
 
         log.LogInformation($"Menu | POST | Update Menu for {menu.Date.ToString("yyyy.MM.dd")}");
 
-        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuPartitionKey);
+        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.PartitionKey);
         log.LogInformation($"Updating Menu Entity...\nRowKey: {menuEntity.RowKey}\nDate: {menuEntity.Date}\nMealId: {menuEntity.MealId}");
+        
         try
         {
-            Response response = await menuTable.UpdateEntityAsync<MenuEntity>(menuEntity, Azure.ETag.All);   
+            await menuRepo.UpdateEntityAsync(menuEntity);   
         }
-        catch (RequestFailedException ex)
+        catch (TableRepositoryException ex)
         {
-            return new BadRequestObjectResult(ex);
+            return new BadRequestObjectResult(ex.Message);
         }
 
         return new OkResult();
@@ -133,8 +125,6 @@ public class DinnerPlansMenu
     [FunctionName("GetTodaysMenu")]
     public async Task<IActionResult> GetTodaysMenu(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req,
-        [Table(menuTableName, Connection = "DinnerPlansTableConnectionString")] TableClient menuTable,
-        [Table(mealTableName, Connection = "DinnerPlansTableConnectionString")] TableClient mealTable,
         ILogger log)
     {
         string today = DateTime.Now.ToString("yyyy.MM.dd");
@@ -144,9 +134,9 @@ public class DinnerPlansMenu
         MenuEntity menuEntity = null;
         try
         {
-            menuEntity = await menuTable.GetEntityAsync<MenuEntity>(menuPartitionKey, today);
+            menuEntity = await menuRepo.GetEntityAsync(today);
         }
-        catch (RequestFailedException)
+        catch (TableRepositoryException)
         {
             return new OkObjectResult("There's nothing on the menu for today :(").DefineResultAsPlainTextContent(StatusCodes.Status200OK);
         }
@@ -156,7 +146,7 @@ public class DinnerPlansMenu
         {
             if (!string.IsNullOrEmpty(menuEntity.MealId))
             {
-                mealEntity = await mealTable.GetEntityAsync<MealEntity>(mealPartitionKey, menuEntity.MealId);
+                mealEntity = await mealRepo.GetEntityAsync(menuEntity.MealId);
             }
         }
         catch (RequestFailedException ex)
