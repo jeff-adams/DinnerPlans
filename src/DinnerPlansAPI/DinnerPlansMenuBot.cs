@@ -107,7 +107,12 @@ public class DinnerPlansMenuBot
                 continue;
             }
             
-            string selectedMealId = await RandomMealByDateAsync(date, log);
+            string selectedMealId = string.Empty;
+            do
+            {
+                selectedMealId = await RandomMealByDateAsync(date, log);
+                selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : string.Empty;
+            } while (string.IsNullOrEmpty(selectedMealId)); 
 
             menuEntity = new ()
             {
@@ -118,11 +123,11 @@ public class DinnerPlansMenuBot
 
             try
             {
-                await menuRepo.AddEntityAsync(menuEntity);
+                await menuRepo.UpsertEntityAsync(menuEntity);
             }
             catch (TableRepositoryException)
             {
-                log.LogError($"MenuUpdatorBot | Timer | Unable to add the menu for {dateString}");
+                log.LogError($"MenuUpdatorBot | Timer | Unable to upsert the menu for {dateString}");
             }
 
         }   

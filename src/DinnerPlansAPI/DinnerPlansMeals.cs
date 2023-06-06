@@ -70,7 +70,7 @@ public class DinnerPlansMeals
             return new OkObjectResult(new JsonResult(new EmptyResult()));
         }
 
-        var meals = mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
+        IEnumerable<Meal> meals = mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
 
         return new OkObjectResult(meals);
     }
@@ -94,7 +94,7 @@ public class DinnerPlansMeals
             return new BadRequestObjectResult(ex);
         }
 
-        await UpdateOrAddCatagories(meal.Catagories);
+        await UpdateOrAddCatagories(meal.Catagories, log);
     
         return new OkObjectResult(mealEntity.Id).DefineResultAsPlainTextContent(StatusCodes.Status201Created);
     }
@@ -119,7 +119,7 @@ public class DinnerPlansMeals
             return new BadRequestObjectResult(ex);
         }
 
-        await UpdateOrAddCatagories(meal.Catagories);
+        await UpdateOrAddCatagories(meal.Catagories, log);
 
         return new OkResult();
     }
@@ -142,7 +142,7 @@ public class DinnerPlansMeals
         return new OkResult();
     }
 
-    private async Task UpdateOrAddCatagories(string[] catagories)
+    private async Task UpdateOrAddCatagories(string[] catagories, ILogger log)
     {
         foreach (string catagory in catagories)
         {
@@ -150,7 +150,14 @@ public class DinnerPlansMeals
             catagoryEntity.PartitionKey = catagoryRepo.PartitionKey;
             catagoryEntity.RowKey = catagory;
 
-            await catagoryRepo.UpsertEntityAsync(catagoryEntity);
+            try
+            {
+                await catagoryRepo.UpsertEntityAsync(catagoryEntity);
+            }
+            catch (RequestFailedException ex)
+            {
+                log.LogError($"Unable to upsert the catagory [{catagory}]", ex);
+            }
         }
     }
 }

@@ -65,7 +65,7 @@ public class TableRepository<T> : ITableRepository<T> where T : class, ITableEnt
     {
         try
         {
-            Response response = await client.UpsertEntityAsync<T>(entity);
+            Response response = await client.UpsertEntityAsync<T>(entity, TableUpdateMode.Merge);
         }
         catch (RequestFailedException ex)
         {
