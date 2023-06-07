@@ -85,7 +85,7 @@ public class DinnerPlansMenuBot
         ILogger log
     )
     {
-        //Check menu for meals in the next 30 days
+        // Check menu for meals in the next 30 days and select a random meal for each
         for (int i = 0; i < 30; i++)
         {
             DateTime date = DateTime.Today.AddDays(i);
@@ -128,8 +128,31 @@ public class DinnerPlansMenuBot
             catch (TableRepositoryException)
             {
                 log.LogError($"MenuUpdatorBot | Timer | Unable to upsert the menu for {dateString}");
+                continue;
             }
 
+            MealEntity mealEntity = null;
+
+            try
+            {
+                mealEntity = await mealRepo.GetEntityAsync(selectedMealId);
+                mealEntity.NextOnMenu = date;
+            }
+            catch (TableRepositoryException)
+            {
+                log.LogError($"MenuUpdatorBot | Timer | Unable to get the meal [{selectedMealId}] to update the 'NextOnMenu' date to [{dateString}]");
+                continue;
+            }
+
+            try
+            {
+                await mealRepo.UpdateEntityAsync(mealEntity);
+            }
+            catch (TableRepositoryException)
+            {
+                log.LogError($"MenuUpdatorBot | Timer | Unable to update the meal [{mealEntity.Id}] 'NextOnMenu' date to [{dateString}]");
+                continue;
+            }
         }   
     }
 
