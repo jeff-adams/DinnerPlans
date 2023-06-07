@@ -225,7 +225,8 @@ public class DinnerPlansMenuBot
         log.LogInformation("MealChooserBot | GET | Querying for all meals not currently on the menu");
         IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => 
             meal.PartitionKey == mealRepo.PartitionKey
-            && meal.NextOnMenu <= DateTime.Now);
+            && (meal.NextOnMenu == null || meal.NextOnMenu <= DateTime.Now));
+            
         return mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
     }
 
@@ -236,6 +237,7 @@ public class DinnerPlansMenuBot
         string season = seasonRules.Where(rule => dateResult >= DateTime.Parse(rule.Start) && dateResult <= DateTime.Parse(rule.End))
                                    .Select(rule => rule.RowKey)
                                    .First();
+
         log.LogInformation($"MealChooserBot | GET | Filter meals by the season: {season}");
         return meals.Where(meal => meal.Seasons.Contains(season));
     }
@@ -243,8 +245,10 @@ public class DinnerPlansMenuBot
     private async Task<IEnumerable<Meal>> FilterMealsOnDayOfWeekAsync(DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
     {
         string day = dateResult.DayOfWeek.ToString();
+
         log.LogInformation($"MealChooserBot | GET | Querying for rules associated with the day of the week: {day}");
         RuleEntity rule = await ruleRepo.GetEntityAsync(day);
+
         log.LogInformation($"MealChooserBot | GET | Filtering on meals from these catagories: {rule.Catagories}");
         string[] catagories = rule.Catagories.Split(',');
         return meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
