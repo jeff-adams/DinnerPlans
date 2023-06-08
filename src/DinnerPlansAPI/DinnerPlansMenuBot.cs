@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
+using System.Linq.Expressions;
 
 namespace DinnerPlansAPI;
 
@@ -34,7 +35,7 @@ public class DinnerPlansMenuBot
 
     [FunctionName("DailyMealUpdater")]
     public async Task MealUpdaterBot(
-        [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
+        //[TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
         ILogger log
     )
     {
@@ -81,7 +82,7 @@ public class DinnerPlansMenuBot
 
     [FunctionName("TimedMenuUpdater")]
     public async Task MenuUpdaterBot(
-        [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
+        //[TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
         ILogger log
     )
     {
@@ -174,7 +175,19 @@ public class DinnerPlansMenuBot
 
        string selectedMealId = await RandomMealByDateAsync(dateResult, log);
 
-       return new OkObjectResult(selectedMealId);
+       Meal meal = null;
+       try
+       {
+            MealEntity mealEntity = await mealRepo.GetEntityAsync(selectedMealId);
+            meal = mealEntity.ConvertToMeal();
+       }
+       catch (TableRepositoryException)
+       {
+            log.LogError($"MealChooserBot | GET | Unable to retrieve the selected meal [{selectedMealId}]");
+            return new BadRequestObjectResult($"Unable to retrieve the selected meal [{selectedMealId}]");
+       }
+
+       return new OkObjectResult(meal);
     }
 
     private async Task<string> RandomMealByDateAsync(DateTime date, ILogger log)
@@ -189,12 +202,11 @@ public class DinnerPlansMenuBot
         IEnumerable<Meal> meals = await GetAllMealsNotOnMenuAsync(log);
         meals = await FilterMealsOnDayOfWeekAsync(date, meals, log);
         meals = await FilterMealsOnSeasonAsync(date, meals, log);
-        Meal[] filteredMeals = meals.ToArray();
-        log.LogInformation($"MealChooserBot | GET | Filtered list of meals down to {filteredMeals.Length} meals");
+        log.LogInformation($"MealChooserBot | GET | Filtered list of meals down to {meals.Count()} meals");
 
         // create weights
         int totalWeight = 0;
-        int[] weights = filteredMeals
+        int[] weights = meals
             .Select(meal => 
                 { 
                     int mealWeight = CalculateMealWeight(meal); 
@@ -212,7 +224,7 @@ public class DinnerPlansMenuBot
             randomIndex -= weights[i];
             if (randomIndex <= 0)
             {
-                selectedMealId = filteredMeals[i].Id;
+                selectedMealId = meals.ElementAt(i).Id; // get element at?
                 break;
             }
         }
@@ -223,11 +235,14 @@ public class DinnerPlansMenuBot
     private async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync(ILogger log)
     {
         log.LogInformation("MealChooserBot | GET | Querying for all meals not currently on the menu");
-        IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => 
-            meal.PartitionKey == mealRepo.PartitionKey
-            && (meal.NextOnMenu == null || meal.NextOnMenu <= DateTime.Now));
-            
-        return mealEntities.Select(mealEntity => mealEntity.ConvertToMeal());
+        IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey == mealRepo.PartitionKey);
+
+        IEnumerable<Meal> meals = mealEntities
+            // Need to filter locally, as the repo query can't handle the null comparison
+            .Where(mealEntity => mealEntity.NextOnMenu is null || mealEntity.NextOnMenu < DateTime.Today)
+            .Select(mealEntity => mealEntity.ConvertToMeal());
+        log.LogInformation($"MealChooserBot | GET | Found {meals.Count()} meals not currently on the menu");
+        return meals;
     }
 
     private async Task<IEnumerable<Meal>> FilterMealsOnSeasonAsync(DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
@@ -238,8 +253,9 @@ public class DinnerPlansMenuBot
                                    .Select(rule => rule.RowKey)
                                    .First();
 
-        log.LogInformation($"MealChooserBot | GET | Filter meals by the season: {season}");
-        return meals.Where(meal => meal.Seasons.Contains(season));
+        IEnumerable<Meal> filteredMeals = meals.Where(meal => meal.Seasons.Contains(season));
+        log.LogInformation($"MealChooserBot | GET | Filtered {filteredMeals.Count()} meals by the season: [{season}]");
+        return filteredMeals;
     }
 
     private async Task<IEnumerable<Meal>> FilterMealsOnDayOfWeekAsync(DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
@@ -247,7 +263,7 @@ public class DinnerPlansMenuBot
         string day = dateResult.DayOfWeek.ToString();
 
         log.LogInformation($"MealChooserBot | GET | Querying for rules associated with the day of the week: {day}");
-        RuleEntity rule = await ruleRepo.GetEntityAsync(day);
+        RuleEntity rule = (await ruleRepo.QueryEntityAsync(x => x.PartitionKey == "days" && x.RowKey == day)).Single();
 
         log.LogInformation($"MealChooserBot | GET | Filtering on meals from these catagories: {rule.Catagories}");
         string[] catagories = rule.Catagories.Split(',');

@@ -13,7 +13,7 @@ public class Startup : FunctionsStartup
             .AddTableRepository<MenuEntity>("menu", "menu")
             .AddTableRepository<MealEntity>("meals", "meal")
             .AddTableRepository<CatagoryEntity>("catagories", "catagory")
-            .AddTableRepository<SpecialDateEntity>("specialDates", "specialDates")
+            .AddTableRepository<SpecialDateEntity>("specialDates", "dates")
             .AddTableRepository<RuleEntity>("rules", "day");
     }
 }
