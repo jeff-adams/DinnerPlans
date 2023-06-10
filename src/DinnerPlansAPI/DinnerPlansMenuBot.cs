@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
-using System.Linq.Expressions;
 
 namespace DinnerPlansAPI;
 
@@ -35,13 +34,11 @@ public class DinnerPlansMenuBot
 
     [FunctionName("DailyMealUpdater")]
     public async Task MealUpdaterBot(
-        //[TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
+        [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
         ILogger log
     )
     {
-        // Triggers every day at 23:30
         log.LogInformation($"DailyMealUpdater | Timer | Updating today's meals 'LastOnMenu' date");
-        // Get todays meal
         MenuEntity todaysMenu;
         MealEntity todaysMeal;
         string today = DateTime.Today.ToString("yyyy.MM.dd");
@@ -82,7 +79,7 @@ public class DinnerPlansMenuBot
 
     [FunctionName("TimedMenuUpdater")]
     public async Task MenuUpdaterBot(
-        //[TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
+        [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
         ILogger log
     )
     {
