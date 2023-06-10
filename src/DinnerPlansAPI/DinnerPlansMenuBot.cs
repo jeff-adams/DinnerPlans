@@ -32,13 +32,13 @@ public class DinnerPlansMenuBot
         ruleRepo = ruleRepository;
     }
 
-    [FunctionName("DailyMealUpdater")]
-    public async Task MealUpdaterBot(
+    [FunctionName("DailyMealUpdator")]
+    public async Task MealUpdatorBot(
         [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
         ILogger log
     )
     {
-        log.LogInformation($"DailyMealUpdater | Timer | Updating today's meals 'LastOnMenu' date");
+        log.LogInformation($"DailyMealUpdator | Timer | Updating today's meals 'LastOnMenu' date");
         MenuEntity todaysMenu;
         MealEntity todaysMeal;
         string today = DateTime.Today.ToString("yyyy.MM.dd");
@@ -49,7 +49,7 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException)
         {
-            log.LogInformation($"DailyMealUpdater | Timer | There is no menu for {today}");
+            log.LogInformation($"DailyMealUpdator | Timer | There is no menu for {today}");
             return;
         }
 
@@ -59,7 +59,7 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException ex)
         {
-            log.LogError(ex, $"DailyMealUpdater | Timer | Unable to find the meal {todaysMenu.MealId}");
+            log.LogError(ex, $"DailyMealUpdator | Timer | Unable to find the meal {todaysMenu.MealId}");
             return;
         }
 
@@ -73,12 +73,12 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException ex)
         {
-            log.LogError(ex, $"DailyMealUpdater | Timer | Unable to update the meal {todaysMenu.MealId}");
+            log.LogError(ex, $"DailyMealUpdator | Timer | Unable to update the meal {todaysMenu.MealId}");
         }
     }
 
-    [FunctionName("TimedMenuUpdater")]
-    public async Task MenuUpdaterBot(
+    [FunctionName("TimedMenuUpdator")]
+    public async Task MenuUpdatorBot(
         [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
         ILogger log
     )
