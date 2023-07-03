@@ -64,7 +64,7 @@ public class DinnerPlansMenuBot
         }
 
         // Update the meal with new dates
-        todaysMeal.NextOnMenu = null;
+        if (!todaysMeal.Catagories.Contains("Special")) todaysMeal.NextOnMenu = null;
         todaysMeal.LastOnMenu = DateTime.Today;
         
         try
@@ -109,7 +109,7 @@ public class DinnerPlansMenuBot
             do
             {
                 selectedMealId = await RandomMealByDateAsync(date, log);
-                selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : string.Empty;
+                if (menuEntity is not null) selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : string.Empty;
             } while (string.IsNullOrEmpty(selectedMealId)); 
 
             menuEntity = new ()
@@ -151,6 +151,8 @@ public class DinnerPlansMenuBot
                 log.LogError($"MenuUpdatorBot | Timer | Unable to update the meal [{mealEntity.Id}] 'NextOnMenu' date to [{dateString}]");
                 continue;
             }
+
+            log.LogInformation($"MenuUpdatorBot | Timer | Menu for {dateString} has been chosen: [{mealEntity.Name}] - [{mealEntity.Id}]");
         }   
     }
 
@@ -221,7 +223,9 @@ public class DinnerPlansMenuBot
             randomIndex -= weights[i];
             if (randomIndex <= 0)
             {
-                selectedMealId = meals.ElementAt(i).Id; // get element at?
+                Meal selectedMeal = meals.ElementAt(i); // get element at?
+                selectedMealId = selectedMeal.Id;
+                log.LogInformation($"MealChooserBot | GET | Randomly selected Meal: {selectedMeal.Name} - {selectedMealId}");
                 break;
             }
         }
