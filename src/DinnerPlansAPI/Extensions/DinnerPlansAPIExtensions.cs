@@ -38,8 +38,8 @@ public static class DinnerPlanAPIExtensions
         {
             PartitionKey = partionKey,
             Date = menu.Date,
-            MealId = menu.Meal.Id,
-            RemovedMealId = menu.RemovedMeal.Id
+            MealId = menu.Meal?.Id,
+            RemovedMealId = menu.RemovedMeal?.Id
         };
 
     public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result, int statusCode)
