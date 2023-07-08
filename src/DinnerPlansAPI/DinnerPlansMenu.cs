@@ -112,7 +112,7 @@ public class DinnerPlansMenu
         
         try
         {
-            await menuRepo.UpdateEntityAsync(menuEntity);   
+            await menuRepo.UpsertEntityAsync(menuEntity);   
         }
         catch (TableRepositoryException ex)
         {

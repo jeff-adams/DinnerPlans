@@ -83,6 +83,8 @@ public class DinnerPlansMenuBot
         ILogger log
     )
     {
+        int numOfNewMenus = 0;
+
         // Check menu for meals in the next 30 days and select a random meal for each
         for (int i = 0; i < 30; i++)
         {
@@ -115,7 +117,7 @@ public class DinnerPlansMenuBot
             menuEntity = new ()
             {
                 PartitionKey = menuRepo.PartitionKey,
-                Date = date,
+                Date = date.ToUniversalTime(),
                 MealId = selectedMealId
             };
 
@@ -134,7 +136,7 @@ public class DinnerPlansMenuBot
             try
             {
                 mealEntity = await mealRepo.GetEntityAsync(selectedMealId);
-                mealEntity.NextOnMenu = date;
+                mealEntity.NextOnMenu = date.ToUniversalTime();
             }
             catch (TableRepositoryException)
             {
@@ -153,7 +155,10 @@ public class DinnerPlansMenuBot
             }
 
             log.LogInformation($"MenuUpdatorBot | Timer | Menu for {dateString} has been chosen: [{mealEntity.Name}] - [{mealEntity.Id}]");
-        }   
+            numOfNewMenus++;
+        }
+
+        log.LogInformation($"MenuUpdatorBot | Timer | Menus for [{numOfNewMenus}] days have been assigned");   
     }
 
     [FunctionName("MealChooserBot")]

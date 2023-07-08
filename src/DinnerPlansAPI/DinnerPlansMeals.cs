@@ -105,14 +105,14 @@ public class DinnerPlansMeals
         ILogger log)
     {
         string reqBody = await req.ReadAsStringAsync();
-        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, jsonOptions);
+        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, new JsonSerializerOptions{ PropertyNameCaseInsensitive = true });
         
         log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
         
         MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
         try
         {
-            await mealRepo.UpdateEntityAsync(mealEntity);
+            await mealRepo.UpsertEntityAsync(mealEntity);
         }
         catch (RequestFailedException ex)
         {
