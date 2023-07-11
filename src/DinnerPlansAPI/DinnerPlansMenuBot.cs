@@ -9,23 +9,27 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
+using Microsoft.Extensions.Configuration;
 
 namespace DinnerPlansAPI;
 
 public class DinnerPlansMenuBot
 {
+    private readonly IConfiguration config;
     private readonly ITableRepository<MealEntity> mealRepo;
     private readonly ITableRepository<MenuEntity> menuRepo;
     private readonly ITableRepository<SpecialDateEntity> specialDateRepo;
     private readonly ITableRepository<RuleEntity> ruleRepo;
 
     public DinnerPlansMenuBot(
+        IConfiguration config,
         ITableRepository<MealEntity> mealRespository,
         ITableRepository<MenuEntity> menuRepository,
         ITableRepository<SpecialDateEntity> specialDatesRepository,
         ITableRepository<RuleEntity> ruleRepository
     )
     {
+        this.config = config;
         mealRepo = mealRespository;
         menuRepo = menuRepository;
         specialDateRepo = specialDatesRepository;
@@ -65,7 +69,7 @@ public class DinnerPlansMenuBot
 
         // Update the meal with new dates
         if (!todaysMeal.Catagories.Contains("Special")) todaysMeal.NextOnMenu = null;
-        todaysMeal.LastOnMenu = DateTime.Today;
+        todaysMeal.LastOnMenu = DateTime.Today.ToUniversalTime();
         
         try
         {
@@ -84,9 +88,10 @@ public class DinnerPlansMenuBot
     )
     {
         int numOfNewMenus = 0;
+        int numOfDaysToPlan = int.TryParse(config["NumberOfDaysToMenuPlan"], out int result) ? result : 30;
 
         // Check menu for meals in the next 30 days and select a random meal for each
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < numOfDaysToPlan; i++)
         {
             DateTime date = DateTime.Today.AddDays(i);
             string dateString = date.ToString("yyyy.MM.dd");
