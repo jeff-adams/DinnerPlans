@@ -127,7 +127,7 @@ public class DinnerPlansMenu
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req,
         ILogger log)
     {
-        string today = DateTime.Now.ToString("yyyy.MM.dd");
+        string today = DateTime.UtcNow.ToEasternStandardTime().ToString("yyyy.MM.dd");
 
         log.LogInformation($"Menu | GET | Menu from today - {today}");
         
@@ -153,7 +153,52 @@ public class DinnerPlansMenu
         {
             log.LogWarning(ex.Message);
         }
+
+        return req.ContentType switch
+        {
+            "application/json" => new OkObjectResult(mealEntity.ConvertToMeal()),
+            "text/html" => new OkObjectResult(mealEntity.ConvertToMeal().ConvertToHtml()),
+            _ => new OkObjectResult(mealEntity.Name).DefineResultAsPlainTextContent(StatusCodes.Status200OK)
+        };
+    }
+
+    [FunctionName("GetTomorrowsMenu")]
+    public async Task<IActionResult> GetTomorrowsMenu(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/tomorrow")] HttpRequest req,
+        ILogger log)
+    {
+        string tomorrow = DateTime.UtcNow.ToEasternStandardTime().AddDays(1).ToString("yyyy.MM.dd");
+
+        log.LogInformation($"Menu | GET | Menu from tomorrow - {tomorrow}");
         
-        return new OkObjectResult(mealEntity.Name).DefineResultAsPlainTextContent(StatusCodes.Status200OK);
+        MenuEntity menuEntity = null;
+        try
+        {
+            menuEntity = await menuRepo.GetEntityAsync(tomorrow);
+        }
+        catch (TableRepositoryException)
+        {
+            return new OkObjectResult("There's nothing on the menu for tomorrow :(").DefineResultAsPlainTextContent(StatusCodes.Status200OK);
+        }
+
+        MealEntity mealEntity = null;
+        try
+        {
+            if (!string.IsNullOrEmpty(menuEntity.MealId))
+            {
+                mealEntity = await mealRepo.GetEntityAsync(menuEntity.MealId);
+            }
+        }
+        catch (RequestFailedException ex)
+        {
+            log.LogWarning(ex.Message);
+        }
+
+        return req.ContentType switch
+        {
+            "application/json" => new OkObjectResult(mealEntity.ConvertToMeal()),
+            "text/html" => new OkObjectResult(mealEntity.ConvertToMeal().ConvertToHtml()),
+            _ => new OkObjectResult(mealEntity.Name).DefineResultAsPlainTextContent(StatusCodes.Status200OK)
+        };
     }
 }

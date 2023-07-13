@@ -22,6 +22,12 @@ public static class DinnerPlanAPIExtensions
             NextOnMenu = meal.NextOnMenu
         };
 
+    public static string ConvertToHtml(this Meal meal)
+    {
+        string recipe = meal.Recipe is null ? string.Empty : $@"<a href=""{meal.Recipe}"">{meal.Recipe}</a>";
+        return $@"<!DOCTYPE html><html><head></head><title>DinnerPlans</title></head><body><h1>{meal.Name}</h1><p>{recipe}</p></body></html>";
+    }
+
     public static Meal ConvertToMeal(this MealEntity mealEntity) =>
         new Meal(
             mealEntity.Id, 
@@ -51,4 +57,9 @@ public static class DinnerPlanAPIExtensions
         result.StatusCode = statusCode;
         return result;
     }
+
+    public static DateTime ToEasternStandardTime(this DateTime date) =>
+        date.Kind == DateTimeKind.Utc 
+            ? TimeZoneInfo.ConvertTimeFromUtc(date, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")) 
+            : date;
 }

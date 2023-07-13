@@ -45,7 +45,7 @@ public class DinnerPlansMenuBot
         log.LogInformation($"DailyMealUpdator | Timer | Updating today's meals 'LastOnMenu' date");
         MenuEntity todaysMenu;
         MealEntity todaysMeal;
-        string today = DateTime.Today.ToString("yyyy.MM.dd");
+        string today = DateTime.UtcNow.ToEasternStandardTime().ToString("yyyy.MM.dd");
 
         try
         {
@@ -69,7 +69,7 @@ public class DinnerPlansMenuBot
 
         // Update the meal with new dates
         if (!todaysMeal.Catagories.Contains("Special")) todaysMeal.NextOnMenu = null;
-        todaysMeal.LastOnMenu = DateTime.Today.ToUniversalTime();
+        todaysMeal.LastOnMenu = DateTime.UtcNow.ToEasternStandardTime().Date.ToUniversalTime();
         
         try
         {
@@ -93,7 +93,7 @@ public class DinnerPlansMenuBot
         // Check menu for meals in the next 30 days and select a random meal for each
         for (int i = 0; i < numOfDaysToPlan; i++)
         {
-            DateTime date = DateTime.Today.AddDays(i);
+            DateTime date = DateTime.UtcNow.ToEasternStandardTime().AddDays(i);
             string dateString = date.ToString("yyyy.MM.dd");
 
             MenuEntity menuEntity = null;
@@ -250,7 +250,7 @@ public class DinnerPlansMenuBot
 
         IEnumerable<Meal> meals = mealEntities
             // Need to filter locally, as the repo query can't handle the null comparison
-            .Where(mealEntity => mealEntity.NextOnMenu is null || mealEntity.NextOnMenu < DateTime.Today)
+            .Where(mealEntity => mealEntity.NextOnMenu is null || mealEntity.NextOnMenu < DateTime.UtcNow.ToEasternStandardTime().Date)
             .Select(mealEntity => mealEntity.ConvertToMeal());
         log.LogInformation($"MealChooserBot | GET | Found {meals.Count()} meals not currently on the menu");
         return meals;
@@ -303,8 +303,8 @@ public class DinnerPlansMenuBot
     {
         int weight = 0;
         
-        DateTime start = meal.LastOnMenu ?? DateTime.Now.AddDays(-1);
-        int dateWeight = (DateTime.Now - start).Days;
+        DateTime start = meal.LastOnMenu ?? DateTime.UtcNow.AddDays(-1);
+        int dateWeight = (DateTime.UtcNow - start).Days;
 
         weight += meal.Rating * dateWeight;
 
