@@ -25,7 +25,7 @@ public static class DinnerPlanAPIExtensions
     public static string ConvertToHtml(this Meal meal)
     {
         string recipe = meal.Recipe is null ? string.Empty : $@"<a href=""{meal.Recipe}"">{meal.Recipe}</a>";
-        return $@"<!DOCTYPE html><html><head></head><title>DinnerPlans</title></head><body><h1>{meal.Name}</h1><p>{recipe}</p></body></html>";
+        return $@"<!DOCTYPE html><html><head><title>DinnerPlans</title></head><body><h1>{meal.Name}</h1><p>{recipe}</p></body></html>";
     }
 
     public static Meal ConvertToMeal(this MealEntity mealEntity) =>
@@ -50,8 +50,10 @@ public static class DinnerPlanAPIExtensions
 
     public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result, int statusCode)
     {
-        var collection = new MediaTypeCollection();
-        collection.Add("text/plain");
+        var collection = new MediaTypeCollection
+        {
+            "text/plain"
+        };
 
         result.ContentTypes = collection;
         result.StatusCode = statusCode;
