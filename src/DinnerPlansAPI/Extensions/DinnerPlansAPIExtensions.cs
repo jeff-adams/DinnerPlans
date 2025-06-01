@@ -48,6 +48,15 @@ public static class DinnerPlanAPIExtensions
             RemovedMealId = menu.RemovedMeal?.Id
         };
 
+    public static Rule ConvertToRule(this RuleEntity ruleEntity)
+    {
+        DateTime start = DateTime.Parse(ruleEntity.Start);
+        DateTime end = DateTime.Parse(ruleEntity.End);
+        if (end < start) end.AddYears(1);
+
+        return new (ruleEntity.RowKey, start, end); 
+    }
+
     public static OkObjectResult DefineResultAsPlainTextContent(this OkObjectResult result, int statusCode)
     {
         var collection = new MediaTypeCollection
