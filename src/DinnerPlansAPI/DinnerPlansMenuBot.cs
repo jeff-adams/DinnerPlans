@@ -260,9 +260,11 @@ public class DinnerPlansMenuBot
     {
         log.LogInformation("MealChooserBot | GET | Querying for the rule's definition of seasons");
         IReadOnlyCollection<RuleEntity> seasonRules = await ruleRepo.QueryEntityAsync(x => x.PartitionKey == "seasons");
-        string season = seasonRules.Where(rule => dateResult >= DateTime.Parse(rule.Start) && dateResult <= DateTime.Parse(rule.End))
-                                   .Select(rule => rule.RowKey)
-                                   .First();
+        string season = seasonRules
+            .Select(ruleEntity => ruleEntity.ConvertToRule())
+            .Where(rule => dateResult >= rule.StartDate && dateResult <= rule.EndDate)
+            .Select(rule => rule.Key)
+            .Single();
 
         IEnumerable<Meal> filteredMeals = meals.Where(meal => meal.Seasons.Contains(season));
         log.LogInformation($"MealChooserBot | GET | Filtered {filteredMeals.Count()} meals by the season: [{season}]");
