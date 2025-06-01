@@ -14,3 +14,5 @@ public record Menu(DateTime Date,
                    Meal RemovedMeal);
 
 public record MenuRange(List<Menu> Menus);
+
+public record Rule(string Key, DateTime StartDate, DateTime EndDate);
