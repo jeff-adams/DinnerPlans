@@ -52,7 +52,12 @@ public static class DinnerPlanAPIExtensions
     {
         DateTime start = DateTime.Parse(ruleEntity.Start);
         DateTime end = DateTime.Parse(ruleEntity.End);
-        if (end < start) end.AddYears(1);
+        if (end < start)
+        {
+            _ = DateTime.UtcNow <= end
+                ? start.AddYears(-1)
+                : end.AddYears(1);
+        }
 
         return new (ruleEntity.RowKey, start, end); 
     }
