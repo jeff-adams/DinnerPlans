@@ -2,14 +2,13 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Extensions.Configuration;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
-using Microsoft.Extensions.Configuration;
 
 namespace DinnerPlansAPI;
 
@@ -36,7 +35,7 @@ public class DinnerPlansMenuBot
         ruleRepo = ruleRepository;
     }
 
-    [FunctionName("DailyMealUpdator")]
+    [Function("DailyMealUpdator")]
     public async Task MealUpdatorBot(
         [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
         ILogger log
@@ -81,7 +80,7 @@ public class DinnerPlansMenuBot
         }
     }
 
-    [FunctionName("TimedMenuUpdator")]
+    [Function("TimedMenuUpdator")]
     public async Task MenuUpdatorBot(
         [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
         ILogger log
@@ -166,7 +165,7 @@ public class DinnerPlansMenuBot
         log.LogInformation($"MenuUpdatorBot | Timer | Menus for [{numOfNewMenus}] days have been assigned");   
     }
 
-    [FunctionName("MealChooserBot")]
+    [Function("MealChooserBot")]
     public async Task<IActionResult> ChooseMeal(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "bot/choose_meal")] HttpRequest req,
         ILogger log)

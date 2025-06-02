@@ -4,13 +4,12 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Azure;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
+using Microsoft.Azure.Functions.Worker;
 
 namespace DinnerPlansAPI;
 
@@ -34,7 +33,7 @@ public class DinnerPlansMeals
         catagoryRepo = catagoryRepository;
     }
 
-    [FunctionName("GetMealById")]
+    [Function("GetMealById")]
     public async Task<IActionResult> GetMealById(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meal/{id}")] HttpRequest req,
         ILogger log,
@@ -54,7 +53,7 @@ public class DinnerPlansMeals
         return new OkObjectResult(mealEntity.ConvertToMeal());
     }
 
-    [FunctionName("GetMeals")]
+    [Function("GetMeals")]
     public async Task<IActionResult> GetMeals(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meals")] HttpRequest req,
         ILogger log)
@@ -75,15 +74,14 @@ public class DinnerPlansMeals
         return new OkObjectResult(meals);
     }
 
-    [FunctionName("CreateMeal")]
+    [Function("CreateMeal")]
     public async Task<IActionResult> CreateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "meal")] HttpRequest req,
         ILogger log)
     {
         log.LogInformation($"Meal | PUT | Create New Meal");
 
-        string reqBody = await req.ReadAsStringAsync();
-        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, jsonOptions);
+        Meal meal = await req.ReadFromJsonAsync<Meal>(options: jsonOptions);
         MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
         try
         {
@@ -99,13 +97,12 @@ public class DinnerPlansMeals
         return new OkObjectResult(mealEntity.Id).DefineResultAsPlainTextContent(StatusCodes.Status201Created);
     }
     
-    [FunctionName("UpdateMeal")]
+    [Function("UpdateMeal")]
     public async Task<IActionResult> UpdateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "meal")] HttpRequest req,
         ILogger log)
     {
-        string reqBody = await req.ReadAsStringAsync();
-        Meal meal = JsonSerializer.Deserialize<Meal>(reqBody, new JsonSerializerOptions{ PropertyNameCaseInsensitive = true });
+        Meal meal = await req.ReadFromJsonAsync<Meal>(options: new JsonSerializerOptions{ PropertyNameCaseInsensitive = true });
         
         log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
         
@@ -124,7 +121,7 @@ public class DinnerPlansMeals
         return new OkResult();
     }
 
-    [FunctionName("DeleteMeal")]
+    [Function("DeleteMeal")]
     public async Task<IActionResult> DeleteMeal(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "meal/{id}")] HttpRequest req,
         ILogger log,

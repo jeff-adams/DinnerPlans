@@ -2,12 +2,11 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Azure;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
 
@@ -26,7 +25,7 @@ public class DinnerPlansMenu
         mealRepo = mealReposistory;
     }
 
-    [FunctionName("GetMenuByDates")]
+    [Function("GetMenuByDates")]
     public async Task<IActionResult> GetMenuByDates(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "menu")] HttpRequest req,
         ILogger log)
@@ -73,13 +72,12 @@ public class DinnerPlansMenu
         return new OkObjectResult(menuResult);
     }
 
-    [FunctionName("CreateMenu")]
+    [Function("CreateMenu")]
     public async Task<IActionResult> CreateMenu(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "menu")] HttpRequest req,
         ILogger log)
     {
-        string reqBody = await req.ReadAsStringAsync();
-        Menu menu = JsonSerializer.Deserialize<Menu>(reqBody);
+        Menu menu = await req.ReadFromJsonAsync<Menu>();
 
         log.LogInformation($"Menu | PUT | Create new menu for {menu.Date.ToString("yyyy.MM.dd")}");
 
@@ -97,13 +95,12 @@ public class DinnerPlansMenu
         return new OkResult();
     }
 
-    [FunctionName("UpdateMenu")]
+    [Function("UpdateMenu")]
     public async Task<IActionResult> UpdateMenu(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "menu")] HttpRequest req,
         ILogger log)
     {
-        string reqBody = await req.ReadAsStringAsync();
-        Menu menu = JsonSerializer.Deserialize<Menu>(reqBody);
+        Menu menu = await req.ReadFromJsonAsync<Menu>();
 
         log.LogInformation($"Menu | POST | Update Menu for {menu.Date.ToString("yyyy.MM.dd")}");
 
@@ -122,7 +119,7 @@ public class DinnerPlansMenu
         return new OkResult();
     }
 
-    [FunctionName("GetTodaysMenu")]
+    [Function("GetTodaysMenu")]
     public async Task<IActionResult> GetTodaysMenu(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req,
         ILogger log)
@@ -162,7 +159,7 @@ public class DinnerPlansMenu
         };
     }
 
-    [FunctionName("GetTomorrowsMenu")]
+    [Function("GetTomorrowsMenu")]
     public async Task<IActionResult> GetTomorrowsMenu(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/tomorrow")] HttpRequest req,
         ILogger log)
