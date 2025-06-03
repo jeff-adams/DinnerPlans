@@ -1,7 +1,6 @@
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using DinnerPlansAPI.Repositories;
 using Azure.Data.Tables;
@@ -10,16 +9,16 @@ namespace DinnerPlansAPI;
 
 public static class FunctionHostBuilderExtensions
 {
-    public static IFunctionsHostBuilder AddTokenCredentials(this IFunctionsHostBuilder builder)
+    public static IServiceCollection AddTokenCredentials(this IServiceCollection services)
     {
         var creds = new DefaultAzureCredential();
-        builder.Services.AddScoped<TokenCredential>(x => creds);
-        return builder;
+        services.AddScoped<TokenCredential>(x => creds);
+        return services;
     }
 
-    public static IFunctionsHostBuilder AddTableRepository<T>(this IFunctionsHostBuilder builder, string tableName, string partitionKey) where T : class, ITableEntity, new()
+    public static IServiceCollection AddTableRepository<T>(this IServiceCollection services, string tableName, string partitionKey) where T : class, ITableEntity, new()
     {
-        builder.Services.AddScoped<ITableRepository<T>, TableRepository<T>>(
+        services.AddScoped<ITableRepository<T>, TableRepository<T>>(
             provider => new TableRepository<T>(
                 provider.GetRequiredService<IConfiguration>(),
                 provider.GetRequiredService<TokenCredential>(),
@@ -27,6 +26,6 @@ public static class FunctionHostBuilderExtensions
                 partitionKey
             )
         );
-        return builder;
+        return services;
     }
 }

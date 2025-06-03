@@ -2,14 +2,13 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Extensions.Configuration;
 using DinnerPlansCommon;
 using DinnerPlansAPI.Repositories;
-using Microsoft.Extensions.Configuration;
 
 namespace DinnerPlansAPI;
 
@@ -20,13 +19,15 @@ public class DinnerPlansMenuBot
     private readonly ITableRepository<MenuEntity> menuRepo;
     private readonly ITableRepository<SpecialDateEntity> specialDateRepo;
     private readonly ITableRepository<RuleEntity> ruleRepo;
+    private readonly ILogger<DinnerPlansMenuBot> log;
 
     public DinnerPlansMenuBot(
         IConfiguration config,
         ITableRepository<MealEntity> mealRespository,
         ITableRepository<MenuEntity> menuRepository,
         ITableRepository<SpecialDateEntity> specialDatesRepository,
-        ITableRepository<RuleEntity> ruleRepository
+        ITableRepository<RuleEntity> ruleRepository,
+        ILogger<DinnerPlansMenuBot> logger
     )
     {
         this.config = config;
@@ -34,12 +35,12 @@ public class DinnerPlansMenuBot
         menuRepo = menuRepository;
         specialDateRepo = specialDatesRepository;
         ruleRepo = ruleRepository;
+        log = logger;
     }
 
-    [FunctionName("DailyMealUpdator")]
+    [Function("DailyMealUpdator")]
     public async Task MealUpdatorBot(
-        [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer,
-        ILogger log
+        [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer
     )
     {
         log.LogInformation($"DailyMealUpdator | Timer | Updating today's meals 'LastOnMenu' date");
@@ -81,10 +82,9 @@ public class DinnerPlansMenuBot
         }
     }
 
-    [FunctionName("TimedMenuUpdator")]
+    [Function("TimedMenuUpdator")]
     public async Task MenuUpdatorBot(
-        [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer,
-        ILogger log
+        [TimerTrigger("%MenuUpdatorInterval%")] TimerInfo timer
     )
     {
         int numOfNewMenus = 0;
@@ -115,7 +115,7 @@ public class DinnerPlansMenuBot
             string selectedMealId = string.Empty;
             do
             {
-                selectedMealId = await RandomMealByDateAsync(date, log);
+                selectedMealId = await RandomMealByDateAsync(date);
                 if (menuEntity is not null) selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : string.Empty;
             } while (string.IsNullOrEmpty(selectedMealId)); 
 
@@ -166,10 +166,9 @@ public class DinnerPlansMenuBot
         log.LogInformation($"MenuUpdatorBot | Timer | Menus for [{numOfNewMenus}] days have been assigned");   
     }
 
-    [FunctionName("MealChooserBot")]
+    [Function("MealChooserBot")]
     public async Task<IActionResult> ChooseMeal(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "bot/choose_meal")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "bot/choose_meal")] HttpRequest req)
     {
         string dateQuery = req.Query["date"];
         bool isValidDate = DateTime.TryParse(dateQuery, out DateTime dateResult);
@@ -182,7 +181,7 @@ public class DinnerPlansMenuBot
         string date = dateResult.ToString("yyyy.MM.dd");
         log.LogInformation($"MealChooserBot | GET | Choose random meal for {date}");
 
-       string selectedMealId = await RandomMealByDateAsync(dateResult, log);
+       string selectedMealId = await RandomMealByDateAsync(dateResult);
 
        Meal meal = null;
        try
@@ -199,18 +198,18 @@ public class DinnerPlansMenuBot
        return new OkObjectResult(meal);
     }
 
-    private async Task<string> RandomMealByDateAsync(DateTime date, ILogger log)
+    private async Task<string> RandomMealByDateAsync(DateTime date)
     {
-        string mealId = await QueryForSpecialMealIdAsync(date.ToString("MMdd"), log);
+        string mealId = await QueryForSpecialMealIdAsync(date.ToString("MMdd"));
         if (!string.IsNullOrEmpty(mealId))
         {
             log.LogInformation($"MealChooserBot | GET | Found special meal for {date.ToString("yyyy.MM.dd")}: [{mealId}]");
             return mealId;
         }
 
-        IEnumerable<Meal> meals = await GetAllMealsNotOnMenuAsync(log);
-        meals = await FilterMealsOnDayOfWeekAsync(date, meals, log);
-        meals = await FilterMealsOnSeasonAsync(date, meals, log);
+        IEnumerable<Meal> meals = await GetAllMealsNotOnMenuAsync();
+        meals = await FilterMealsOnDayOfWeekAsync(date, meals);
+        meals = await FilterMealsOnSeasonAsync(date, meals);
         log.LogInformation($"MealChooserBot | GET | Filtered list of meals down to {meals.Count()} meals");
 
         // create weights
@@ -243,7 +242,7 @@ public class DinnerPlansMenuBot
         return selectedMealId;
     }
 
-    private async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync(ILogger log)
+    private async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync()
     {
         log.LogInformation("MealChooserBot | GET | Querying for all meals not currently on the menu");
         IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey == mealRepo.PartitionKey);
@@ -256,7 +255,7 @@ public class DinnerPlansMenuBot
         return meals;
     }
 
-    private async Task<IEnumerable<Meal>> FilterMealsOnSeasonAsync(DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
+    private async Task<IEnumerable<Meal>> FilterMealsOnSeasonAsync(DateTime dateResult, IEnumerable<Meal> meals)
     {
         log.LogInformation("MealChooserBot | GET | Querying for the rule's definition of seasons");
         IReadOnlyCollection<RuleEntity> seasonRules = await ruleRepo.QueryEntityAsync(x => x.PartitionKey == "seasons");
@@ -271,7 +270,7 @@ public class DinnerPlansMenuBot
         return filteredMeals;
     }
 
-    private async Task<IEnumerable<Meal>> FilterMealsOnDayOfWeekAsync(DateTime dateResult, IEnumerable<Meal> meals, ILogger log)
+    private async Task<IEnumerable<Meal>> FilterMealsOnDayOfWeekAsync(DateTime dateResult, IEnumerable<Meal> meals)
     {
         string day = dateResult.DayOfWeek.ToString();
 
@@ -283,7 +282,7 @@ public class DinnerPlansMenuBot
         return meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
     }
 
-    private async Task<string> QueryForSpecialMealIdAsync(string date, ILogger log)
+    private async Task<string> QueryForSpecialMealIdAsync(string date)
     {
         log.LogInformation($"MealChooserBot | GET | Quering for special meals planned for {date}");
 
