@@ -16,19 +16,21 @@ public class DinnerPlansMenu
 {
     private readonly ITableRepository<MenuEntity> menuRepo;
     private readonly ITableRepository<MealEntity> mealRepo;
+    private readonly ILogger<DinnerPlansMenu> log;
 
     public DinnerPlansMenu(
         ITableRepository<MenuEntity> menuRepository,
-        ITableRepository<MealEntity> mealReposistory)
+        ITableRepository<MealEntity> mealReposistory,
+        ILogger<DinnerPlansMenu> logger)
     {
         menuRepo = menuRepository;
         mealRepo = mealReposistory;
+        log = logger;
     }
 
     [Function("GetMenuByDates")]
     public async Task<IActionResult> GetMenuByDates(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "menu")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "menu")] HttpRequest req)
     {
         DateRange dateRange = await JsonSerializer.DeserializeAsync<DateRange>(req.Body);
         string startDate = dateRange.StartDate.ToString("yyyy.MM.dd");
@@ -74,8 +76,7 @@ public class DinnerPlansMenu
 
     [Function("CreateMenu")]
     public async Task<IActionResult> CreateMenu(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "menu")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "menu")] HttpRequest req)
     {
         Menu menu = await req.ReadFromJsonAsync<Menu>();
 
@@ -97,8 +98,7 @@ public class DinnerPlansMenu
 
     [Function("UpdateMenu")]
     public async Task<IActionResult> UpdateMenu(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "menu")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "menu")] HttpRequest req)
     {
         Menu menu = await req.ReadFromJsonAsync<Menu>();
 
@@ -121,8 +121,7 @@ public class DinnerPlansMenu
 
     [Function("GetTodaysMenu")]
     public async Task<IActionResult> GetTodaysMenu(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/today")] HttpRequest req)
     {
         string today = DateTime.UtcNow.ToEasternStandardTime().ToString("yyyy.MM.dd");
 
@@ -161,8 +160,7 @@ public class DinnerPlansMenu
 
     [Function("GetTomorrowsMenu")]
     public async Task<IActionResult> GetTomorrowsMenu(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/tomorrow")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "menu/tomorrow")] HttpRequest req)
     {
         string tomorrow = DateTime.UtcNow.ToEasternStandardTime().AddDays(1).ToString("yyyy.MM.dd");
 
