@@ -41,7 +41,7 @@ public class DinnerPlansMeals
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meal/{id}")] HttpRequest req,
         string id)
     {
-        log.LogInformation($"Meal | GET | Meal - {id}");
+        log.LogInformation("Meal | GET | Meal - {MealId}", id);
         MealEntity mealEntity;
         try
         {
@@ -103,7 +103,7 @@ public class DinnerPlansMeals
     {
         Meal meal = await req.ReadFromJsonAsync<Meal>(options: new JsonSerializerOptions{ PropertyNameCaseInsensitive = true });
         
-        log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
+        log.LogInformation("Meal | POST | Update Meal - {MealName} [{MealId}]", meal.Name, meal.Id);
         
         MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
         try
@@ -125,7 +125,7 @@ public class DinnerPlansMeals
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "meal/{id}")] HttpRequest req,
         string id)
     {
-        log.LogInformation($"Meal | DELETE | Meal - {id}");
+        log.LogInformation("Meal | DELETE | Meal - {MealId}", id);
         try
         {
             await mealRepo.DeleteEntityAsync(id);
@@ -151,7 +151,7 @@ public class DinnerPlansMeals
             }
             catch (RequestFailedException ex)
             {
-                log.LogError($"Unable to upsert the catagory [{catagory}]", ex);
+                log.LogError(ex, "Unable to upsert the catagory [{Catagory}]", catagory);
             }
         }
     }

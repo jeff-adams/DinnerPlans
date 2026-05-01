@@ -26,12 +26,12 @@ public class DinnerPlansCatagories
     public async Task<IActionResult> GetCatagories(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "catagories")] HttpRequest req)
     {
-        log.LogInformation($"Catagory | GET | All Catagories");
+        log.LogInformation("Catagory | GET | All Catagories");
         IReadOnlyCollection<CatagoryEntity> catagoryEntities;
         try
         {
             catagoryEntities = await catagoryRepo.QueryEntityAsync(catagory => catagory.PartitionKey  == catagoryRepo.PartitionKey);
-            log.LogInformation($"There are {catagoryEntities.Count} catagories");
+            log.LogInformation("There are {CatagoryCount} catagories", catagoryEntities.Count);
         }
         catch (TableRepositoryException)
         {
