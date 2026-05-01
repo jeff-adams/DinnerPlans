@@ -43,7 +43,7 @@ public class DinnerPlansMenuBot
         [TimerTrigger("%MealDailyUpdatorInterval%")] TimerInfo timer
     )
     {
-        log.LogInformation("DailyMealUpdator | Timer | Updating today's meals 'LastOnMenu' date");
+        log.LogInformation("{FunctionName} | {Type} | Updating today's meals 'LastOnMenu' date", "DailyMealUpdator", "Timer");
         MenuEntity todaysMenu;
         MealEntity todaysMeal;
         string today = DateTime.UtcNow.ToEasternStandardTime().ToString("yyyy.MM.dd");
@@ -54,7 +54,7 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException)
         {
-            log.LogInformation("DailyMealUpdator | Timer | There is no menu for {Date}", today);
+            log.LogInformation("{FunctionName} | {Type} | There is no menu for {Date}", "DailyMealUpdator", "Timer", today);
             return;
         }
 
@@ -64,7 +64,7 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException ex)
         {
-            log.LogError(ex, "DailyMealUpdator | Timer | Unable to find the meal {MealId}", todaysMenu.MealId);
+            log.LogError(ex, "{FunctionName} | {Type} | Unable to find the meal {MealId}", "DailyMealUpdator", "Timer", todaysMenu.MealId);
             return;
         }
 
@@ -78,7 +78,7 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException ex)
         {
-            log.LogError(ex, "DailyMealUpdator | Timer | Unable to update the meal {MealId}", todaysMenu.MealId);
+            log.LogError(ex, "{FunctionName} | {Type} | Unable to update the meal {MealId}", "DailyMealUpdator", "Timer", todaysMenu.MealId);
         }
     }
 
@@ -103,12 +103,12 @@ public class DinnerPlansMenuBot
             }
             catch (TableRepositoryException)
             {
-                log.LogInformation("MenuUpdatorBot | Timer | No menu found for {Date}", dateString);
+                log.LogInformation("{FunctionName} | {Type} | No menu found for {Date}", "TimedMenuUpdator", "Timer", dateString);
             }
 
             if (menuEntity is not null && !string.IsNullOrEmpty(menuEntity.MealId))
             {
-                log.LogInformation("MenuUpdatorBot | Timer | Menu found for {Date} already has a scheduled meal: [{MealId}]", dateString, menuEntity.MealId);
+                log.LogInformation("{FunctionName} | {Type} | Menu found for {Date} already has a scheduled meal: [{MealId}]", "TimedMenuUpdator", "Timer", dateString, menuEntity.MealId);
                 continue;
             }
             
@@ -132,7 +132,7 @@ public class DinnerPlansMenuBot
             }
             catch (TableRepositoryException)
             {
-                log.LogError("MenuUpdatorBot | Timer | Unable to upsert the menu for {Date}", dateString);
+                log.LogError("{FunctionName} | {Type} | Unable to upsert the menu for {Date}", "TimedMenuUpdator", "Timer", dateString);
                 continue;
             }
 
@@ -145,7 +145,7 @@ public class DinnerPlansMenuBot
             }
             catch (TableRepositoryException)
             {
-                log.LogError("MenuUpdatorBot | Timer | Unable to get the meal [{MealId}] to update the 'NextOnMenu' date to [{Date}]", selectedMealId, dateString);
+                log.LogError("{FunctionName} | {Type} | Unable to get the meal [{MealId}] to update the 'NextOnMenu' date to [{Date}]", "TimedMenuUpdator", "Timer", selectedMealId, dateString);
                 continue;
             }
 
@@ -155,15 +155,15 @@ public class DinnerPlansMenuBot
             }
             catch (TableRepositoryException)
             {
-                log.LogError("MenuUpdatorBot | Timer | Unable to update the meal [{MealId}] 'NextOnMenu' date to [{Date}]", mealEntity.Id, dateString);
+                log.LogError("{FunctionName} | {Type} | Unable to update the meal [{MealId}] 'NextOnMenu' date to [{Date}]", "TimedMenuUpdator", "Timer", mealEntity.Id, dateString);
                 continue;
             }
 
-            log.LogInformation("MenuUpdatorBot | Timer | Menu for {Date} has been chosen: [{MealName}] - [{MealId}]", dateString, mealEntity.Name, mealEntity.Id);
+            log.LogInformation("{FunctionName} | {Type} | Menu for {Date} has been chosen: [{MealName}] - [{MealId}]", "TimedMenuUpdator", "Timer", dateString, mealEntity.Name, mealEntity.Id);
             numOfNewMenus++;
         }
 
-        log.LogInformation("MenuUpdatorBot | Timer | Menus for [{NumOfNewMenus}] days have been assigned", numOfNewMenus);   
+        log.LogInformation("{FunctionName} | {Type} | Menus for [{NumOfNewMenus}] days have been assigned", "TimedMenuUpdator", "Timer", numOfNewMenus);   
     }
 
     [Function("MealChooserBot")]
@@ -174,12 +174,12 @@ public class DinnerPlansMenuBot
         bool isValidDate = DateTime.TryParse(dateQuery, out DateTime dateResult);
         if (!isValidDate)
         {
-            log.LogError("MealChooserBot | GET | Recieved invalid DateTime format in query: [{DateQuery}]", dateQuery);
+            log.LogError("{FunctionName} | {Type} | Recieved invalid DateTime format in query: [{DateQuery}]", "ChooseMeal", "GET", dateQuery);
             return new BadRequestObjectResult($"Please provide a DateTime query, 'api/choose_meal?date=<DateTime>'");
         }
 
         string date = dateResult.ToString("yyyy.MM.dd");
-        log.LogInformation("MealChooserBot | GET | Choose random meal for {Date}", date);
+        log.LogInformation("{FunctionName} | {Type} | Choose random meal for {Date}", "ChooseMeal", "GET", date);
 
        string selectedMealId = await RandomMealByDateAsync(dateResult);
 
@@ -191,7 +191,7 @@ public class DinnerPlansMenuBot
        }
        catch (TableRepositoryException)
        {
-            log.LogError("MealChooserBot | GET | Unable to retrieve the selected meal [{MealId}]", selectedMealId);
+            log.LogError("{FunctionName} | {Type} | Unable to retrieve the selected meal [{MealId}]", "ChooseMeal", "GET", selectedMealId);
             return new BadRequestObjectResult($"Unable to retrieve the selected meal [{selectedMealId}]");
        }
 
@@ -203,14 +203,14 @@ public class DinnerPlansMenuBot
         string mealId = await QueryForSpecialMealIdAsync(date.ToString("MMdd"));
         if (!string.IsNullOrEmpty(mealId))
         {
-            log.LogInformation("MealChooserBot | GET | Found special meal for {Date}: [{MealId}]", date.ToString("yyyy.MM.dd"), mealId);
+            log.LogInformation("{FunctionName} | {Type} | Found special meal for {Date}: [{MealId}]", "RandomMealByDate", "Internal", date.ToString("yyyy.MM.dd"), mealId);
             return mealId;
         }
 
         IEnumerable<Meal> meals = await GetAllMealsNotOnMenuAsync();
         meals = await FilterMealsOnDayOfWeekAsync(date, meals);
         meals = await FilterMealsOnSeasonAsync(date, meals);
-        log.LogInformation("MealChooserBot | GET | Filtered list of meals down to {MealCount} meals", meals.Count());
+        log.LogInformation("{FunctionName} | {Type} | Filtered list of meals down to {MealCount} meals", "RandomMealByDate", "Internal", meals.Count());
 
         // create weights
         int totalWeight = 0;
@@ -225,7 +225,7 @@ public class DinnerPlansMenuBot
 
         // randomly choose weighted meal
         int randomIndex = new Random().Next(totalWeight) + 1;
-        log.LogInformation("MealChooserBot | GET | Number of meals: {MealCount} | Total weight: {TotalWeight} | Randomly selected index: {RandomIndex}", weights.Length, totalWeight, randomIndex);
+        log.LogInformation("{FunctionName} | {Type} | Number of meals: {MealCount} | Total weight: {TotalWeight} | Randomly selected index: {RandomIndex}", "RandomMealByDate", "Internal", weights.Length, totalWeight, randomIndex);
         string selectedMealId = string.Empty;
         for (int i = 0; i < weights.Length; i++)
         {
@@ -234,7 +234,7 @@ public class DinnerPlansMenuBot
             {
                 Meal selectedMeal = meals.ElementAt(i); // get element at?
                 selectedMealId = selectedMeal.Id;
-                log.LogInformation("MealChooserBot | GET | Randomly selected Meal: {MealName} - {MealId}", selectedMeal.Name, selectedMealId);
+                log.LogInformation("{FunctionName} | {Type} | Randomly selected Meal: {MealName} - {MealId}", "RandomMealByDate", "Internal", selectedMeal.Name, selectedMealId);
                 break;
             }
         }
@@ -244,20 +244,20 @@ public class DinnerPlansMenuBot
 
     private async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync()
     {
-        log.LogInformation("MealChooserBot | GET | Querying for all meals not currently on the menu");
+        log.LogInformation("{FunctionName} | {Type} | Querying for all meals not currently on the menu", "GetAllMealsNotOnMenu", "Internal");
         IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey == mealRepo.PartitionKey);
 
         IEnumerable<Meal> meals = mealEntities
             // Need to filter locally, as the repo query can't handle the null comparison
             .Where(mealEntity => mealEntity.NextOnMenu is null || mealEntity.NextOnMenu < DateTime.UtcNow.ToEasternStandardTime().Date)
             .Select(mealEntity => mealEntity.ConvertToMeal());
-        log.LogInformation("MealChooserBot | GET | Found {MealCount} meals not currently on the menu", meals.Count());
+        log.LogInformation("{FunctionName} | {Type} | Found {MealCount} meals not currently on the menu", "GetAllMealsNotOnMenu", "Internal", meals.Count());
         return meals;
     }
 
     private async Task<IEnumerable<Meal>> FilterMealsOnSeasonAsync(DateTime dateResult, IEnumerable<Meal> meals)
     {
-        log.LogInformation("MealChooserBot | GET | Querying for the rule's definition of seasons");
+        log.LogInformation("{FunctionName} | {Type} | Querying for the rule's definition of seasons", "FilterMealsOnSeason", "Internal");
         IReadOnlyCollection<RuleEntity> seasonRules = await ruleRepo.QueryEntityAsync(x => x.PartitionKey == "seasons");
         string season = seasonRules
             .Select(ruleEntity => ruleEntity.ConvertToRule())
@@ -266,7 +266,7 @@ public class DinnerPlansMenuBot
             .Single();
 
         IEnumerable<Meal> filteredMeals = meals.Where(meal => meal.Seasons.Contains(season));
-        log.LogInformation("MealChooserBot | GET | Filtered {MealCount} meals by the season: [{Season}]", filteredMeals.Count(), season);
+        log.LogInformation("{FunctionName} | {Type} | Filtered {MealCount} meals by the season: [{Season}]", "FilterMealsOnSeason", "Internal", filteredMeals.Count(), season);
         return filteredMeals;
     }
 
@@ -274,17 +274,17 @@ public class DinnerPlansMenuBot
     {
         string day = dateResult.DayOfWeek.ToString();
 
-        log.LogInformation("MealChooserBot | GET | Querying for rules associated with the day of the week: {DayOfWeek}", day);
+        log.LogInformation("{FunctionName} | {Type} | Querying for rules associated with the day of the week: {DayOfWeek}", "FilterMealsOnDayOfWeek", "Internal", day);
         RuleEntity rule = (await ruleRepo.QueryEntityAsync(x => x.PartitionKey == "days" && x.RowKey == day)).Single();
 
-        log.LogInformation("MealChooserBot | GET | Filtering on meals from these catagories: {Catagories}", rule.Catagories);
+        log.LogInformation("{FunctionName} | {Type} | Filtering on meals from these catagories: {Catagories}", "FilterMealsOnDayOfWeek", "Internal", rule.Catagories);
         string[] catagories = rule.Catagories.Split(',');
         return meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
     }
 
     private async Task<string> QueryForSpecialMealIdAsync(string date)
     {
-        log.LogInformation("MealChooserBot | GET | Quering for special meals planned for {Date}", date);
+        log.LogInformation("{FunctionName} | {Type} | Quering for special meals planned for {Date}", "QueryForSpecialMealId", "Internal", date);
 
         string mealId = string.Empty;
         try
@@ -294,7 +294,7 @@ public class DinnerPlansMenuBot
         }
         catch (TableRepositoryException)
         {
-            log.LogInformation("MealChooserBot | GET | No special meals planned for {Date}", date);
+            log.LogInformation("{FunctionName} | {Type} | No special meals planned for {Date}", "QueryForSpecialMealId", "Internal", date);
         }
 
         return mealId;
