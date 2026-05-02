@@ -36,7 +36,7 @@ public class DinnerPlansMenu
         string startDate = dateRange.StartDate.ToString("yyyy.MM.dd");
         string endDate = dateRange.EndDate.ToString("yyyy.MM.dd");
 
-        log.LogInformation($"Menu | GET | Menu from {startDate} to {endDate}");
+        log.LogInformation("{FunctionName} | {Type} | Menu from {StartDate} to {EndDate}", "GetMenuByDates", "GET", startDate, endDate);
         
         IReadOnlyCollection<MenuEntity> menuEntities = await menuRepo.QueryEntityAsync(menu => menu.PartitionKey == "menu" 
                                                                     && menu.Date >= dateRange.StartDate 
@@ -80,7 +80,7 @@ public class DinnerPlansMenu
     {
         Menu menu = await req.ReadFromJsonAsync<Menu>();
 
-        log.LogInformation($"Menu | PUT | Create new menu for {menu.Date.ToString("yyyy.MM.dd")}");
+        log.LogInformation("{FunctionName} | {Type} | Create new menu for {MenuDate}", "CreateMenu", "PUT", menu.Date.ToString("yyyy.MM.dd"));
 
         MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.PartitionKey);
 
@@ -102,10 +102,10 @@ public class DinnerPlansMenu
     {
         Menu menu = await req.ReadFromJsonAsync<Menu>();
 
-        log.LogInformation($"Menu | POST | Update Menu for {menu.Date.ToString("yyyy.MM.dd")}");
+        log.LogInformation("{FunctionName} | {Type} | Update Menu for {MenuDate}", "UpdateMenu", "POST", menu.Date.ToString("yyyy.MM.dd"));
 
         MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.PartitionKey);
-        log.LogInformation($"Updating Menu Entity...\nRowKey: {menuEntity.RowKey}\nDate: {menuEntity.Date}\nMealId: {menuEntity.MealId}");
+        log.LogInformation("{FunctionName} | {Type} | Updating Menu Entity...\nRowKey: {RowKey}\nDate: {Date}\nMealId: {MealId}", "UpdateMenu", "Internal", menuEntity.RowKey, menuEntity.Date, menuEntity.MealId);
         
         try
         {
@@ -125,7 +125,7 @@ public class DinnerPlansMenu
     {
         string today = DateTime.UtcNow.ToEasternStandardTime().ToString("yyyy.MM.dd");
 
-        log.LogInformation($"Menu | GET | Menu from today - {today}");
+        log.LogInformation("{FunctionName} | {Type} | Menu from today - {Date}", "GetTodaysMenu", "GET", today);
         
         MenuEntity menuEntity = null;
         try
@@ -164,7 +164,7 @@ public class DinnerPlansMenu
     {
         string tomorrow = DateTime.UtcNow.ToEasternStandardTime().AddDays(1).ToString("yyyy.MM.dd");
 
-        log.LogInformation($"Menu | GET | Menu from tomorrow - {tomorrow}");
+        log.LogInformation("{FunctionName} | {Type} | Menu from tomorrow - {Date}", "GetTomorrowsMenu", "GET", tomorrow);
         
         MenuEntity menuEntity = null;
         try

@@ -41,7 +41,7 @@ public class DinnerPlansMeals
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meal/{id}")] HttpRequest req,
         string id)
     {
-        log.LogInformation($"Meal | GET | Meal - {id}");
+        log.LogInformation("{FunctionName} | {Type} | Meal - {MealId}", "GetMealById", "GET", id);
         MealEntity mealEntity;
         try
         {
@@ -59,7 +59,7 @@ public class DinnerPlansMeals
     public async Task<IActionResult> GetMeals(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "meals")] HttpRequest req)
     {
-        log.LogInformation($"Meal | GET | All Meals");
+        log.LogInformation("{FunctionName} | {Type} | All Meals", "GetMeals", "GET");
         IReadOnlyCollection<MealEntity> mealEntities;
         try
         {
@@ -79,7 +79,7 @@ public class DinnerPlansMeals
     public async Task<IActionResult> CreateMeal(
         [HttpTrigger(AuthorizationLevel.Function, "put", Route = "meal")] HttpRequest req)
     {
-        log.LogInformation($"Meal | PUT | Create New Meal");
+        log.LogInformation("{FunctionName} | {Type} | Create New Meal", "CreateMeal", "PUT");
 
         Meal meal = await req.ReadFromJsonAsync<Meal>(options: jsonOptions);
         MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
@@ -103,7 +103,7 @@ public class DinnerPlansMeals
     {
         Meal meal = await req.ReadFromJsonAsync<Meal>(options: new JsonSerializerOptions{ PropertyNameCaseInsensitive = true });
         
-        log.LogInformation($"Meal | POST | Update Meal - {meal.Name} [{meal.Id}]");
+        log.LogInformation("{FunctionName} | {Type} | Update Meal - {MealName} [{MealId}]", "UpdateMeal", "POST", meal.Name, meal.Id);
         
         MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
         try
@@ -125,7 +125,7 @@ public class DinnerPlansMeals
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "meal/{id}")] HttpRequest req,
         string id)
     {
-        log.LogInformation($"Meal | DELETE | Meal - {id}");
+        log.LogInformation("{FunctionName} | {Type} | Meal - {MealId}", "DeleteMeal", "DELETE", id);
         try
         {
             await mealRepo.DeleteEntityAsync(id);
@@ -151,7 +151,7 @@ public class DinnerPlansMeals
             }
             catch (RequestFailedException ex)
             {
-                log.LogError($"Unable to upsert the catagory [{catagory}]", ex);
+                log.LogError(ex, "{FunctionName} | {Type} | Unable to upsert the catagory [{Catagory}]", "UpdateOrAddCatagories", "Error", catagory);
             }
         }
     }
