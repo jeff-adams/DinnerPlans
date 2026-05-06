@@ -17,7 +17,7 @@ var host = new HostBuilder()
             .AddTableRepository<MealEntity>("meals", "meal")
             .AddTableRepository<CatagoryEntity>("catagories", "catagory")
             .AddTableRepository<SpecialDateEntity>("specialDates", "dates")
-            .AddTableRepository<RuleEntity>("rules", "day");
+            .AddTableRepository<RuleEntity>("rules", "days");
     })
     .ConfigureLogging(logging =>
     {

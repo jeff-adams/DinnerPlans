@@ -264,6 +264,7 @@ public class DinnerPlansMenuBot
             .Where(rule => dateResult >= rule.StartDate && dateResult <= rule.EndDate)
             .Select(rule => rule.Key)
             .Single();
+        log.LogInformation("{FunctionName} | {Type} | The season for the date {Date} is [{Season}]", "FilterMealsOnSeason", "Internal", dateResult, season);
 
         IEnumerable<Meal> filteredMeals = meals.Where(meal => meal.Seasons.Contains(season));
         log.LogInformation("{FunctionName} | {Type} | Filtered {MealCount} meals by the season: [{Season}]", "FilterMealsOnSeason", "Internal", filteredMeals.Count(), season);
