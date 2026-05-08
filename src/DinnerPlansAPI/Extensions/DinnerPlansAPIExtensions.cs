@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using DinnerPlansCommon;
 using Microsoft.AspNetCore.Mvc;
@@ -50,13 +51,18 @@ public static class DinnerPlanAPIExtensions
 
     public static Rule ConvertToRule(this RuleEntity ruleEntity)
     {
-        DateTime start = DateTime.Parse(ruleEntity.Start);
-        DateTime end = DateTime.Parse(ruleEntity.End);
+        DateTime start = ParseDateMonthDay(ruleEntity.Start);
+        DateTime end = ParseDateMonthDay(ruleEntity.End);
         if (end < start)
         {
-            _ = DateTime.UtcNow <= end
-                ? start.AddYears(-1)
-                : end.AddYears(1);
+            if (DateTime.UtcNow <= end)
+            {
+                start = start.AddYears(-1);
+            }
+            else
+            {
+                end = end.AddYears(1);
+            }
         }
 
         return new (ruleEntity.RowKey, start, end); 
@@ -75,7 +81,12 @@ public static class DinnerPlanAPIExtensions
     }
 
     public static DateTime ToEasternStandardTime(this DateTime date) =>
-        date.Kind == DateTimeKind.Utc 
-            ? TimeZoneInfo.ConvertTimeFromUtc(date, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")) 
+        date.Kind == DateTimeKind.Utc
+            ? TimeZoneInfo.ConvertTimeFromUtc(date, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"))
             : date;
+
+    private static DateTime ParseDateMonthDay(string date) =>
+        DateTime.TryParseExact(date, "MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result)
+            ? result
+            : DateTime.MinValue;
 }

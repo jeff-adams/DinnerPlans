@@ -115,7 +115,7 @@ public class DinnerPlansMenuBot
             string selectedMealId = string.Empty;
             do
             {
-                selectedMealId = await RandomMealByDateAsync(date);
+                selectedMealId = await RandomMealByDateAsync(date.Date);
                 if (menuEntity is not null) selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : string.Empty;
             } while (string.IsNullOrEmpty(selectedMealId)); 
 
@@ -259,11 +259,27 @@ public class DinnerPlansMenuBot
     {
         log.LogInformation("{FunctionName} | {Type} | Querying for the rule's definition of seasons", "FilterMealsOnSeason", "Internal");
         IReadOnlyCollection<RuleEntity> seasonRules = await ruleRepo.QueryEntityAsync(x => x.PartitionKey == "seasons");
-        string season = seasonRules
-            .Select(ruleEntity => ruleEntity.ConvertToRule())
+        string[] seasons = seasonRules
+            .Select(ruleEntity =>
+                {
+                    Rule rule = ruleEntity.ConvertToRule();
+                    if (rule.StartDate == DateTime.MinValue || rule.EndDate == DateTime.MinValue)
+                    {
+                        log.LogError("{FunctionName} | {Type} | Invalid season rule with key [{RuleKey}] has invalid start or end date. Start: [{Start}] End: [{End}]", "FilterMealsOnSeason", "Internal", rule.Key, rule.StartDate, rule.EndDate);
+                    }
+                    log.LogInformation("{FunctionName} | {Type} | Season rule found for season [{Season}] with start date [{Start}] and end date [{End}]", "FilterMealsOnSeason", "Internal", rule.Key, rule.StartDate, rule.EndDate);
+                    return rule;
+                })
             .Where(rule => dateResult >= rule.StartDate && dateResult <= rule.EndDate)
             .Select(rule => rule.Key)
-            .Single();
+            .ToArray();
+
+        string season = seasons.FirstOrDefault();
+        if(seasons.Length > 1)
+        {
+            log.LogWarning("{FunctionName} | {Type} | Multiple season rules found for the date {Date}. Seasons: {Seasons}", "FilterMealsOnSeason", "Internal", dateResult, string.Join(", ", seasons));
+        }
+        log.LogInformation("{FunctionName} | {Type} | The season for the date {Date} is [{Season}]", "FilterMealsOnSeason", "Internal", dateResult, season);
 
         IEnumerable<Meal> filteredMeals = meals.Where(meal => meal.Seasons.Contains(season));
         log.LogInformation("{FunctionName} | {Type} | Filtered {MealCount} meals by the season: [{Season}]", "FilterMealsOnSeason", "Internal", filteredMeals.Count(), season);
