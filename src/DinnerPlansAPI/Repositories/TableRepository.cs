@@ -12,24 +12,27 @@ namespace DinnerPlansAPI.Repositories;
 
 public class TableRepository<T> : ITableRepository<T> where T : class, ITableEntity, new()
 {
-    public string PartitionKey { get; }
+    public string DefaultPartitionKey { get; }
 
     private TableClient client;
     private readonly string entityTypeName;
 
-    public TableRepository(IConfiguration config, TokenCredential creds, string tableName, string partitionKey)
+    public TableRepository(IConfiguration config, TokenCredential creds, string tableName, string defaultPartitionKey)
     {
-        PartitionKey = partitionKey;
+        DefaultPartitionKey = defaultPartitionKey;
         entityTypeName = typeof(T).ToString().Split('.').Last();
-        Uri tableEndpoint = new (config["TableEndpoint"]);
+        Uri tableEndpoint = new(config["TableEndpoint"]);
         client = new TableClient(tableEndpoint, tableName, creds);
     }
 
-    public async Task<T> GetEntityAsync(string key)
+    public async Task<T> GetEntityAsync(string key) =>
+        await GetEntityAsync(DefaultPartitionKey, key);
+
+    public async Task<T> GetEntityAsync(string partitionKey, string key)
     {
         try
         {
-            return await client.GetEntityAsync<T>(PartitionKey, key);
+            return await client.GetEntityAsync<T>(partitionKey, key);
         }
         catch (RequestFailedException ex)
         {
@@ -73,11 +76,14 @@ public class TableRepository<T> : ITableRepository<T> where T : class, ITableEnt
         }
     }
 
-    public async Task DeleteEntityAsync(string key)
+    public async Task DeleteEntityAsync(string key) =>
+        await DeleteEntityAsync(DefaultPartitionKey, key);
+
+    public async Task DeleteEntityAsync(string partitionKey, string key)
     {
         try
         {
-            Response response = await client.DeleteEntityAsync(PartitionKey, key);
+            Response response = await client.DeleteEntityAsync(partitionKey, key);
         }
         catch (RequestFailedException ex)
         {
