@@ -1,0 +1,1 @@
+public record struct Choice(string Text, Action Action);
