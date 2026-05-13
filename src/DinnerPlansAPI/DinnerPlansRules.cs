@@ -1,7 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using DinnerPlansAPI.Repositories;
+using DinnerPlansCommon;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -13,6 +16,8 @@ public class DinnerPlansRules
 {
     private readonly ITableRepository<RuleEntity> ruleRepo;
     private readonly ILogger<DinnerPlansRules> log;
+    private readonly JsonSerializerOptions jsonOptions;
+    private const string seasonsPartitionKey = "seasons";
 
     public DinnerPlansRules(
         ITableRepository<RuleEntity> ruleRepository,
@@ -20,6 +25,11 @@ public class DinnerPlansRules
     {
         ruleRepo = ruleRepository;
         log = logger;
+        jsonOptions = new () 
+        { 
+            PropertyNameCaseInsensitive = true, 
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
+        };
     }
 
     [Function(nameof(GetSeasons))]
@@ -30,7 +40,7 @@ public class DinnerPlansRules
         IReadOnlyCollection<RuleEntity> seasonEntities;
         try
         {
-            seasonEntities = await ruleRepo.QueryEntityAsync(rule => rule.PartitionKey == "seasons");
+            seasonEntities = await ruleRepo.QueryEntityAsync(rule => rule.PartitionKey ==  seasonsPartitionKey);
             log.LogInformation("{FunctionName} | {Type} | Retrieved {RuleCount} seasons", nameof(GetSeasons), "GET", seasonEntities.Count);
         }
         catch (TableRepositoryException ex)
@@ -44,14 +54,14 @@ public class DinnerPlansRules
 
     [Function(nameof(UpdateSeason))]
     public async Task<IActionResult> UpdateSeason(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "seasons/{seasonId}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "seasons/{seasonId}")] HttpRequest req,
         string seasonId)
     {
         log.LogInformation("{FunctionName} | {Type} | Updating season {SeasonId}", nameof(UpdateSeason), "PUT", seasonId);
         RuleEntity seasonEntity;
         try
         {
-            seasonEntity = await ruleRepo.GetEntityAsync(seasonId);
+            seasonEntity = await ruleRepo.GetEntityAsync(seasonsPartitionKey, seasonId);
             if (seasonEntity is null)
             {
                 log.LogWarning("{FunctionName} | {Type} | The season {SeasonId} was not found", nameof(UpdateSeason), "PUT", seasonId);
@@ -64,7 +74,10 @@ public class DinnerPlansRules
             return new BadRequestObjectResult(new JsonResult(new EmptyResult()));
         }
 
-        // TODO: Get the start and end date from the request body and update the existingRule with the new values
+        DateRange dates = await req.ReadFromJsonAsync<DateRange>(options: jsonOptions);
+        log.LogInformation("{FunctionName} | {Type} | Updating season {SeasonId} with new start date: {StartDate} and end date: {EndDate}", nameof(UpdateSeason), "PUT", seasonId, dates.StartDate, dates.EndDate);
+        seasonEntity.Start = dates.StartDate.ToString("MM/dd");
+        seasonEntity.End = dates.EndDate.ToString("MM/dd");
 
         try
         {

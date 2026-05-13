@@ -82,7 +82,7 @@ public class DinnerPlansMenu
 
         log.LogInformation("{FunctionName} | {Type} | Create new menu for {MenuDate}", "CreateMenu", "PUT", menu.Date.ToString("yyyy.MM.dd"));
 
-        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.PartitionKey);
+        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.DefaultPartitionKey);
 
         try
         {
@@ -104,7 +104,7 @@ public class DinnerPlansMenu
 
         log.LogInformation("{FunctionName} | {Type} | Update Menu for {MenuDate}", "UpdateMenu", "POST", menu.Date.ToString("yyyy.MM.dd"));
 
-        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.PartitionKey);
+        MenuEntity menuEntity = menu.ConvertToMenuEntity(menuRepo.DefaultPartitionKey);
         log.LogInformation("{FunctionName} | {Type} | Updating Menu Entity...\nRowKey: {RowKey}\nDate: {Date}\nMealId: {MealId}", "UpdateMenu", "Internal", menuEntity.RowKey, menuEntity.Date, menuEntity.MealId);
         
         try
