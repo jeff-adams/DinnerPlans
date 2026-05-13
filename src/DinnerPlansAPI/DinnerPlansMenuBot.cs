@@ -116,12 +116,18 @@ public class DinnerPlansMenuBot
             do
             {
                 selectedMealId = await RandomMealByDateAsync(date.Date);
-                if (menuEntity is not null) selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : string.Empty;
-            } while (string.IsNullOrEmpty(selectedMealId)); 
+                if (menuEntity is not null) selectedMealId = selectedMealId != menuEntity.RemovedMealId ? selectedMealId : null;
+            } while (selectedMealId is null);
+
+            if (string.IsNullOrEmpty(selectedMealId))
+            {
+                log.LogError("{FunctionName} | {Type} | No meal could be selected for {Date}", "TimedMenuUpdator", "Timer", dateString);
+                continue;
+            } 
 
             menuEntity = new ()
             {
-                PartitionKey = menuRepo.PartitionKey,
+                PartitionKey = menuRepo.DefaultPartitionKey,
                 Date = date.ToUniversalTime(),
                 MealId = selectedMealId
             };
@@ -181,7 +187,12 @@ public class DinnerPlansMenuBot
         string date = dateResult.ToString("yyyy.MM.dd");
         log.LogInformation("{FunctionName} | {Type} | Choose random meal for {Date}", "ChooseMeal", "GET", date);
 
-       string selectedMealId = await RandomMealByDateAsync(dateResult);
+        string selectedMealId = await RandomMealByDateAsync(dateResult);
+        if (string.IsNullOrEmpty(selectedMealId))
+        {
+            log.LogWarning("{FunctionName} | {Type} | No meal could be selected for {Date}", "ChooseMeal", "GET", date);
+            return new BadRequestObjectResult($"No meal could be selected for {date}");
+        }
 
        Meal meal = null;
        try
@@ -208,8 +219,23 @@ public class DinnerPlansMenuBot
         }
 
         IEnumerable<Meal> meals = await GetAllMealsNotOnMenuAsync();
+        if (!meals.Any())
+        {
+            log.LogWarning("{FunctionName} | {Type} | No meals available to choose from for {Date}", "RandomMealByDate", "Internal", date.ToString("yyyy.MM.dd"));
+            return string.Empty;
+        }
         meals = await FilterMealsOnDayOfWeekAsync(date, meals);
+        if (!meals.Any())
+        {
+            log.LogWarning("{FunctionName} | {Type} | No meals available to choose from after filtering by day of the week for {Date}", "RandomMealByDate", "Internal", date.ToString("yyyy.MM.dd"));
+            return string.Empty;
+        }
         meals = await FilterMealsOnSeasonAsync(date, meals);
+        if (!meals.Any())
+        {
+            log.LogWarning("{FunctionName} | {Type} | No meals available to choose from after filtering by season for {Date}", "RandomMealByDate", "Internal", date.ToString("yyyy.MM.dd"));
+            return string.Empty;
+        }
         log.LogInformation("{FunctionName} | {Type} | Filtered list of meals down to {MealCount} meals", "RandomMealByDate", "Internal", meals.Count());
 
         // create weights
@@ -245,7 +271,7 @@ public class DinnerPlansMenuBot
     private async Task<IEnumerable<Meal>> GetAllMealsNotOnMenuAsync()
     {
         log.LogInformation("{FunctionName} | {Type} | Querying for all meals not currently on the menu", "GetAllMealsNotOnMenu", "Internal");
-        IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey == mealRepo.PartitionKey);
+        IReadOnlyCollection<MealEntity> mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey == mealRepo.DefaultPartitionKey);
 
         IEnumerable<Meal> meals = mealEntities
             // Need to filter locally, as the repo query can't handle the null comparison
@@ -295,7 +321,11 @@ public class DinnerPlansMenuBot
 
         log.LogInformation("{FunctionName} | {Type} | Filtering on meals from these catagories: {Catagories}", "FilterMealsOnDayOfWeek", "Internal", rule.Catagories);
         string[] catagories = rule.Catagories.Split(',');
-        return meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
+
+        IEnumerable<Meal> filteredMeals = meals.Where(meal => meal.Catagories.Any(catagory => catagories.Contains(catagory)));
+        log.LogInformation("{FunctionName} | {Type} | Filtered {MealCount} meals by the day of the week: {DayOfWeek}", "FilterMealsOnDayOfWeek", "Internal", filteredMeals.Count(), day);
+
+        return filteredMeals;
     }
 
     private async Task<string> QueryForSpecialMealIdAsync(string date)
