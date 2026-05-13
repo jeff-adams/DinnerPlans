@@ -30,7 +30,7 @@ public class DinnerPlansCatagories
         IReadOnlyCollection<CatagoryEntity> catagoryEntities;
         try
         {
-            catagoryEntities = await catagoryRepo.QueryEntityAsync(catagory => catagory.PartitionKey  == catagoryRepo.PartitionKey);
+            catagoryEntities = await catagoryRepo.QueryEntityAsync(catagory => catagory.PartitionKey  == catagoryRepo.DefaultPartitionKey);
             log.LogInformation("{FunctionName} | {Type} | There are {CatagoryCount} catagories", "GetCatagories", "GET", catagoryEntities.Count);
         }
         catch (TableRepositoryException)
