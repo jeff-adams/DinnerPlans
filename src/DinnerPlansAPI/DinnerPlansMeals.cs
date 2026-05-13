@@ -63,7 +63,7 @@ public class DinnerPlansMeals
         IReadOnlyCollection<MealEntity> mealEntities;
         try
         {
-            mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey  == mealRepo.PartitionKey);
+            mealEntities = await mealRepo.QueryEntityAsync(meal => meal.PartitionKey  == mealRepo.DefaultPartitionKey);
         }
         catch (TableRepositoryException)
         {
@@ -82,7 +82,7 @@ public class DinnerPlansMeals
         log.LogInformation("{FunctionName} | {Type} | Create New Meal", "CreateMeal", "PUT");
 
         Meal meal = await req.ReadFromJsonAsync<Meal>(options: jsonOptions);
-        MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
+        MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.DefaultPartitionKey);
         try
         {
             await mealRepo.AddEntityAsync(mealEntity);
@@ -105,7 +105,7 @@ public class DinnerPlansMeals
         
         log.LogInformation("{FunctionName} | {Type} | Update Meal - {MealName} [{MealId}]", "UpdateMeal", "POST", meal.Name, meal.Id);
         
-        MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.PartitionKey);
+        MealEntity mealEntity = meal.ConvertToMealEntity(mealRepo.DefaultPartitionKey);
         try
         {
             await mealRepo.UpsertEntityAsync(mealEntity);
@@ -142,7 +142,7 @@ public class DinnerPlansMeals
         foreach (string catagory in catagories)
         {
             CatagoryEntity catagoryEntity = new ();
-            catagoryEntity.PartitionKey = catagoryRepo.PartitionKey;
+            catagoryEntity.PartitionKey = catagoryRepo.DefaultPartitionKey;
             catagoryEntity.RowKey = catagory;
 
             try
